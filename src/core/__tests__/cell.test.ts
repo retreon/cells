@@ -1,4 +1,4 @@
-import { cell, get } from '../index.js';
+import { cell, get } from '../../index';
 
 describe('cell', () => {
   it('stores and retrieves values', () => {
