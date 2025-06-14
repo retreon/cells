@@ -1,4 +1,5 @@
-import type { Cell, ChangeHandler } from './types.js';
+import type { Cell, ChangeHandler } from './types';
+import { nextVersion } from './version';
 
 // Module-scoped state for tracking batch context
 let isBatching = false;
@@ -36,10 +37,25 @@ function swap<T>(cell: Cell<T>, newValue: T): void {
 
   if (cell.value !== newValue) {
     cell.value = newValue;
+    cell.version = nextVersion();
 
     // Queue notifications for after batch completes
     for (const watcher of cell.watchers) {
       pendingNotifications.add(watcher);
+    }
+  }
+}
+
+export function notifyWatchers(watchers: Set<ChangeHandler>): void {
+  if (isBatching) {
+    // Queue notifications for after batch completes
+    for (const watcher of watchers) {
+      pendingNotifications.add(watcher);
+    }
+  } else {
+    // Not in a batch - notify immediately
+    for (const watcher of watchers) {
+      watcher();
     }
   }
 }

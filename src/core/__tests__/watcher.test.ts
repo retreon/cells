@@ -1,4 +1,4 @@
-import { cell, batch, watch } from '../../index.js';
+import { cell, batch, watch } from '../../index';
 
 describe('watch', () => {
   it('notifies on cell changes', () => {

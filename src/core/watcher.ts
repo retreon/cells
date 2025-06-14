@@ -1,40 +1,88 @@
-import type { Signal, Disposer, ChangeHandler } from './types.js';
+import type { Signal, Disposer, ChangeHandler, Cell, Source } from './types';
+import { nextVersion } from './version';
+import { dependencies } from '../utils/dependencies';
 
 export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
-  // Add the handler to the signal's watchers
-  signal.watchers.add(handler);
+  if (signal.type === 'cell' || signal.type === 'source') {
+    // For cells and sources, directly add the handler
+    signal.watchers.add(handler);
 
-  // For sources, transition from volatile to cached mode
-  if (signal.type === 'source' && signal.watchers.size === 1) {
-    // First watcher - transition to cached mode
-    signal.isVolatile = false;
+    // For sources, transition from volatile to cached mode
+    if (signal.type === 'source' && signal.watchers.size === 1) {
+      // First watcher - transition to cached mode
+      signal.isVolatile = false;
 
-    // If source has a subscribe function, set up the subscription
-    if (signal.subscribe) {
-      signal.subscriptionDisposer = signal.subscribe(() => {
-        // When source changes, mark as stale and notify watchers
-        signal.cachedValue = undefined;
-        handler();
-      });
+      // If source has a subscribe function, set up the subscription
+      if (signal.subscribe) {
+        signal.subscriptionDisposer = signal.subscribe(() => {
+          // When source changes, update version and notify watchers
+          signal.cachedValue = undefined;
+          signal.version = nextVersion();
+          handler();
+        });
+      }
     }
-  }
 
-  // Return a disposer function
-  return () => {
-    signal.watchers.delete(handler);
+    // Return a disposer function
+    return () => {
+      signal.watchers.delete(handler);
 
-    // For sources, transition back to volatile mode if no watchers
-    if (signal.type === 'source' && signal.watchers.size === 0) {
-      signal.isVolatile = true;
+      // For sources, transition back to volatile mode if no watchers
+      if (signal.type === 'source' && signal.watchers.size === 0) {
+        signal.isVolatile = true;
 
-      // Clean up subscription
-      if (signal.subscriptionDisposer) {
-        signal.subscriptionDisposer();
-        signal.subscriptionDisposer = undefined;
+        // Clean up subscription
+        if (signal.subscriptionDisposer) {
+          signal.subscriptionDisposer();
+          signal.subscriptionDisposer = undefined;
+        }
+
+        // Clear cached value
+        signal.cachedValue = undefined;
+      }
+    };
+  } else {
+    // For formulas, watch their dependencies instead
+    const depWatchers = new Map<Cell<unknown> | Source<unknown>, Disposer>();
+
+    // When dependencies change, update subscriptions and notify
+    const wrappedHandler = (): void => {
+      // Get current dependencies
+      const currentDeps = dependencies(signal);
+
+      // Remove watchers for dependencies that are no longer used
+      for (const [dep, disposer] of depWatchers) {
+        if (!currentDeps.has(dep)) {
+          disposer();
+          depWatchers.delete(dep);
+        }
       }
 
-      // Clear cached value
-      signal.cachedValue = undefined;
+      // Add watchers for new dependencies
+      for (const dep of currentDeps) {
+        if (!depWatchers.has(dep)) {
+          const disposer = watch(dep, wrappedHandler);
+          depWatchers.set(dep, disposer);
+        }
+      }
+
+      // Notify the original handler
+      handler();
+    };
+
+    // Set up initial dependencies
+    const initialDeps = dependencies(signal);
+    for (const dep of initialDeps) {
+      const disposer = watch(dep, wrappedHandler);
+      depWatchers.set(dep, disposer);
     }
-  };
+
+    // Return a disposer that cleans up all dependency watchers
+    return () => {
+      for (const disposer of depWatchers.values()) {
+        disposer();
+      }
+      depWatchers.clear();
+    };
+  }
 }

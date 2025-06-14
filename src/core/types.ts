@@ -2,6 +2,7 @@
 export interface Cell<T> {
   readonly type: 'cell';
   value: T;
+  version: number;
   watchers: Set<ChangeHandler>;
 }
 
@@ -9,10 +10,9 @@ export interface Formula<T> {
   readonly type: 'formula';
   readonly compute: () => T;
   cachedValue: T | undefined;
-  dependencies: Set<BaseSignal>;
+  version: number;
+  dependencyVersions: Map<BaseSignal, number>;
   watchers: Set<ChangeHandler>;
-  isStale: boolean;
-  dependencyDisposers: Map<BaseSignal, Disposer>;
 }
 
 export interface Source<T> {
@@ -20,6 +20,7 @@ export interface Source<T> {
   readonly fetch: () => T;
   readonly subscribe?: (onChange: () => void) => Disposer;
   cachedValue: T | undefined;
+  version: number;
   watchers: Set<ChangeHandler>;
   isVolatile: boolean;
   subscriptionDisposer?: Disposer;

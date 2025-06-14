@@ -1,9 +1,11 @@
-import type { Cell, ChangeHandler } from './types.js';
+import type { Cell } from './types';
+import { currentVersion } from './version';
 
 export function cell<T>(initialValue: T): Cell<T> {
   return {
     type: 'cell',
     value: initialValue,
-    watchers: new Set<ChangeHandler>(),
+    version: currentVersion(),
+    watchers: new Set(),
   };
 }
