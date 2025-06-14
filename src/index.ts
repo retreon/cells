@@ -1,5 +1,6 @@
 export { cell } from './core/cell';
 export { formula } from './core/formula';
+export { source } from './core/source';
 export { get } from './core/get';
 export { batch } from './core/batch';
 export { watch } from './core/watcher';

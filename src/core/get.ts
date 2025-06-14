@@ -12,7 +12,15 @@ export function get<T>(signal: Signal<T>): T {
     case 'formula':
       return evaluateFormula(signal);
     case 'source':
-      // TODO: Implement source fetching
-      throw new Error('Source fetching not yet implemented');
+      if (signal.isVolatile) {
+        // In volatile mode, always fetch fresh
+        return signal.fetch();
+      } else {
+        // In cached mode, use cached value if available
+        if (signal.cachedValue === undefined) {
+          signal.cachedValue = signal.fetch();
+        }
+        return signal.cachedValue;
+      }
   }
 }
