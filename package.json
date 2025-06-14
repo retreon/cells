@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json.schemastore.org/package",
+  "name": "@retreon/cells",
+  "version": "0.0.0",
+  "description": "A minimal spreadsheet engine",
+  "author": "Jesse Gibson <JesseTheGibson@gmail.com>",
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/retreon/cells.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "spreadsheet",
+    "signals",
+    "reactive",
+    "state"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/cells.d.ts",
+        "default": "./dist/cells.cjs"
+      },
+      "import": {
+        "types": "./dist/cells.d.ts",
+        "default": "./dist/cells.js"
+      }
+    }
+  },
+  "scripts": {
+    "prepare": "vite build",
+    "test": "./bin/run-tests",
+    "test:unit": "vitest --run",
+    "test:lint": "eslint src --color",
+    "test:fmt": "prettier --check src",
+    "test:types": "tsc",
+    "print-pkg-version": "echo ${npm_package_version}",
+    "release:candidate": "./bin/publish-rc",
+    "release:stable": "./bin/publish-stable"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/eslint__js": "^8.42.3",
+    "@types/node": "^24.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.18.2",
+    "keep-a-changelog": "^2.6.2",
+    "prettier": "^3.4.2",
+    "typescript-eslint": "^8.18.2",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.3"
+  }
+}
