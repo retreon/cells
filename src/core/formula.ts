@@ -2,6 +2,30 @@ import type { Formula, BaseSignal } from './types';
 import { withTracking } from '../utils/dependency-tracker';
 import { nextVersion } from './version';
 
+/**
+ * Creates a formula that computes a derived value from other signals.
+ *
+ * Formulas automatically track their dependencies and update when those
+ * dependencies change. Dependencies are discovered dynamically during
+ * computation.
+ *
+ * @param compute - A function that computes the derived value
+ * @returns A formula signal that can be read with `get()`
+ *
+ * @example
+ * ```typescript
+ * const a = cell(2);
+ * const b = cell(3);
+ * const sum = formula(() => get(a) + get(b));
+ *
+ * console.log(get(sum)); // 5
+ *
+ * batch((swap) => {
+ *   swap(a, 10);
+ * });
+ * console.log(get(sum)); // 13
+ * ```
+ */
 export function formula<T>(compute: () => T): Formula<T> {
   const f: Formula<T> = {
     type: 'formula',

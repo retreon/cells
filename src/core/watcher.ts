@@ -2,6 +2,31 @@ import type { Signal, Disposer, ChangeHandler, Cell, Source } from './types';
 import { nextVersion } from './version';
 import { dependencies } from '../utils/dependencies';
 
+/**
+ * Watches a signal for changes and calls the handler when it updates.
+ *
+ * For cells and sources, the handler is called when their value changes.
+ * For formulas, the handler is called when any of their dependencies change.
+ *
+ * @param signal - The signal to watch
+ * @param handler - Function to call when the signal changes
+ * @returns A disposer function that stops watching when called
+ *
+ * @example
+ * ```typescript
+ * const count = cell(0);
+ *
+ * const dispose = watch(count, () => {
+ *   console.log('Count changed to:', get(count));
+ * });
+ *
+ * batch((swap) => {
+ *   swap(count, 5); // Logs: "Count changed to: 5"
+ * });
+ *
+ * dispose(); // Stop watching
+ * ```
+ */
 export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
   if (signal.type === 'cell' || signal.type === 'source') {
     // For cells and sources, directly add the handler

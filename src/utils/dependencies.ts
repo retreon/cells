@@ -2,9 +2,24 @@ import type { Signal, Cell, Source, BaseSignal } from '../core/types';
 import { evaluateFormula } from '../core/formula';
 
 /**
- * Recursively collect all cell and source dependencies of a signal.
- * For cells and sources, returns a set containing just itself.
- * For formulas, returns all cells and sources it transitively depends on.
+ * Recursively collects all cell and source dependencies of a signal.
+ *
+ * This function traverses the dependency graph and returns only the
+ * "leaf" signals (cells and sources), not intermediate formulas.
+ *
+ * @param signal - The signal to analyze
+ * @returns A set of all cells and sources that the signal depends on
+ *
+ * @example
+ * ```typescript
+ * const a = cell(1);
+ * const b = cell(2);
+ * const sum = formula(() => get(a) + get(b));
+ * const doubled = formula(() => get(sum) * 2);
+ *
+ * const deps = dependencies(doubled);
+ * // deps contains: {a, b} (not sum)
+ * ```
  */
 export function dependencies<T>(
   signal: Signal<T>,

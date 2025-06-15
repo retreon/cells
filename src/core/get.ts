@@ -2,6 +2,24 @@ import type { Signal } from './types';
 import { trackDependency } from '../utils/dependency-tracker';
 import { evaluateFormula } from './formula';
 
+/**
+ * Reads the current value of a signal.
+ *
+ * When called inside a formula computation, automatically tracks
+ * the signal as a dependency of that formula.
+ *
+ * @param signal - The signal to read from
+ * @returns The current value of the signal
+ *
+ * @example
+ * ```typescript
+ * const count = cell(5);
+ * console.log(get(count)); // 5
+ *
+ * const doubled = formula(() => get(count) * 2);
+ * console.log(get(doubled)); // 10
+ * ```
+ */
 export function get<T>(signal: Signal<T>): T {
   // Track this signal as a dependency of the current formula
   trackDependency(signal);
