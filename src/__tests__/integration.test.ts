@@ -60,7 +60,7 @@ describe('Integration Tests', () => {
   });
 
   describe('Form Validation Example', () => {
-    it.skip('implements reactive form validation with dynamic rules', () => {
+    it('implements reactive form validation with dynamic rules', () => {
       // Form fields
       const username = cell('');
       const email = cell('');
@@ -139,8 +139,8 @@ describe('Integration Tests', () => {
       batch((swap) => {
         swap(username, 'john_doe');
         swap(email, 'john@example.com');
-        swap(password, 'SecurePass123');
-        swap(confirmPassword, 'SecurePass123');
+        swap(password, 'SecurePass');
+        swap(confirmPassword, 'SecurePass');
       });
 
       touchField('username');
