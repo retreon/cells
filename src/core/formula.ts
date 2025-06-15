@@ -1,6 +1,6 @@
 import type { Formula, BaseSignal } from './types';
 import { withTracking } from '../utils/dependency-tracker';
-import { nextVersion } from './version';
+import { globalVersion } from './version';
 
 /**
  * Creates a formula that computes a derived value from other signals.
@@ -48,12 +48,18 @@ export function recordDependencyVersion(
 }
 
 function isStale<T>(formula: Formula<T>): boolean {
-  // Formula is stale if any dependency version has changed
+  // Quick check: if global version hasn't changed, nothing is stale
+  if (formula.version === globalVersion) {
+    return false;
+  }
+
+  // If global version changed, check individual dependencies
   for (const [dep, lastVersion] of formula.dependencyVersions) {
     if (dep.version !== lastVersion) {
       return true;
     }
   }
+
   // Also stale if never computed
   return formula.version === 0;
 }
@@ -67,15 +73,10 @@ export function evaluateFormula<T>(formula: Formula<T>): T {
   formula.dependencyVersions.clear();
 
   // Compute with dependency tracking
-  const value = withTracking(formula, () => {
-    const result = formula.compute();
-    // After computing, record current versions of all dependencies
-    // This happens inside withTracking so we know the dependencies
-    return result;
-  });
+  const value = withTracking(formula, formula.compute);
 
   formula.cachedValue = value;
-  formula.version = nextVersion();
+  formula.version = globalVersion;
 
   return value;
 }

@@ -1,5 +1,5 @@
 import type { Source } from './types';
-import { currentVersion } from './version';
+import { globalVersion } from './version';
 
 /**
  * Creates a source signal that bridges external data into the reactive system.
@@ -38,7 +38,7 @@ export function source<T>(
     fetch,
     subscribe,
     cachedValue: undefined,
-    version: currentVersion(),
+    version: globalVersion,
     watchers: new Set(),
     isVolatile: true,
     subscriptionDisposer: undefined,

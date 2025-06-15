@@ -1,5 +1,5 @@
 import type { Cell } from './types';
-import { currentVersion } from './version';
+import { globalVersion } from './version';
 
 /**
  * Creates a mutable cell that holds a value.
@@ -22,7 +22,7 @@ export function cell<T>(initialValue: T): Cell<T> {
   return {
     type: 'cell',
     value: initialValue,
-    version: currentVersion(),
+    version: globalVersion,
     watchers: new Set(),
   };
 }
