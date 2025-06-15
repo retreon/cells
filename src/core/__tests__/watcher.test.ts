@@ -103,4 +103,17 @@ describe('watch', () => {
 
     expect(notified).toBe(false);
   });
+
+  it('invokes onChange without `this` context', () => {
+    const count = cell(0);
+    const onChange = vi.fn();
+
+    watch(count, onChange);
+
+    batch((swap) => {
+      swap(count, 1);
+    });
+
+    expect(onChange.mock.contexts).toEqual([undefined]);
+  });
 });

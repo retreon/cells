@@ -18,7 +18,7 @@ export interface Formula<T> {
 
 export interface Source<T> {
   readonly type: 'source';
-  readonly fetch: () => T;
+  readonly read: () => T;
   readonly subscribe?: (onChange: () => void) => Disposer;
   cachedValue: T | undefined;
   version: number;

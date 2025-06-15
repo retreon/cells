@@ -12,12 +12,12 @@ export const evaluateSource = <T>(source: Source<T>): T => {
   }
 
   if (source.isVolatile) {
-    // In volatile mode, always fetch fresh
-    return source.fetch();
+    // In volatile mode, always fetch fresh (without `this`).
+    return (0, source.read)();
   } else {
     // In cached mode, fetch if we haven't cached a value yet
     if (!source.hasCachedValue) {
-      source.cachedValue = source.fetch();
+      source.cachedValue = source.read();
       source.hasCachedValue = true;
     }
     return source.cachedValue as T;
@@ -95,7 +95,7 @@ export const removeSourceWatcher = <T>(
  * - **Volatile**: When unwatched, always fetches fresh data
  * - **Cached**: When watched, caches the value and updates via subscription
  *
- * @param fetch - Function that retrieves the current value
+ * @param read - Function that retrieves the current value
  * @param subscribe - Optional function to subscribe to changes.
  *                   Receives a callback to notify of changes.
  *                   Returns a cleanup function.
@@ -117,11 +117,11 @@ export const removeSourceWatcher = <T>(
  * ```
  */
 export const source = <T>(
-  fetch: () => T,
+  read: () => T,
   subscribe?: (onChange: () => void) => () => void,
 ): Source<T> => ({
   type: 'source',
-  fetch,
+  read,
   subscribe,
   cachedValue: undefined,
   version: globalVersion,

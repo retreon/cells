@@ -188,4 +188,13 @@ describe('source', () => {
     expect(get(compute)).toBe(true); // Again for good measure.
     expect(read).toHaveBeenCalledTimes(1);
   });
+
+  it('invokes onChange without this context', () => {
+    const read = vi.fn();
+    const value = source(read);
+
+    get(value); // Initialize
+
+    expect(read.mock.contexts).toEqual([undefined]);
+  });
 });

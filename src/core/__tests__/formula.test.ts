@@ -291,4 +291,13 @@ describe('formula', () => {
     // Cell value never changed, so formula should never recompute
     expect(computeCount).toBe(1);
   });
+
+  it('invokes compute without `this` context', () => {
+    const compute = vi.fn(() => 42);
+    const value = formula(compute);
+
+    get(value); // Initialize
+
+    expect(compute.mock.contexts).toEqual([undefined]);
+  });
 });

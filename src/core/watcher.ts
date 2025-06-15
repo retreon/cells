@@ -46,7 +46,8 @@ export const updateWatcherDependencies = (
   watcher.dependencies = nextDependencies;
 
   if (emit) {
-    watcher.onChange();
+    // Invoke without `this` context.
+    (0, watcher.onChange)();
   }
 };
 
