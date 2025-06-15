@@ -42,6 +42,7 @@ export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
         signal.subscriptionDisposer = signal.subscribe(() => {
           // When source changes, update version and notify watchers
           signal.cachedValue = undefined;
+          signal.hasCachedValue = false;
           signal.version = nextVersion();
           handler();
         });
@@ -64,6 +65,7 @@ export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
 
         // Clear cached value
         signal.cachedValue = undefined;
+        signal.hasCachedValue = false;
       }
     };
   } else {

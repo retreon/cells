@@ -41,6 +41,7 @@ export function source<T>(
     version: globalVersion,
     watchers: new Set(),
     isVolatile: true,
+    hasCachedValue: false,
     subscriptionDisposer: undefined,
   };
 }

@@ -31,7 +31,7 @@ export function formula<T>(compute: () => T): Formula<T> {
     type: 'formula',
     compute,
     cachedValue: undefined,
-    version: 0,
+    version: -1,
     dependencyVersions: new Map(),
     watchers: new Set(),
     isVolatile: false,
@@ -72,12 +72,12 @@ function isStale<T>(formula: Formula<T>): boolean {
   }
 
   // Also stale if never computed
-  return formula.version === 0;
+  return formula.version === -1;
 }
 
 export function evaluateFormula<T>(formula: Formula<T>): T {
-  if (!isStale(formula) && formula.cachedValue !== undefined) {
-    return formula.cachedValue;
+  if (!isStale(formula)) {
+    return formula.cachedValue as T;
   }
 
   // Clear old dependency versions and reset volatility

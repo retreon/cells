@@ -34,11 +34,12 @@ export function get<T>(signal: Signal<T>): T {
         // In volatile mode, always fetch fresh
         return signal.fetch();
       } else {
-        // In cached mode, use cached value if available
-        if (signal.cachedValue === undefined) {
+        // In cached mode, fetch if we haven't cached a value yet
+        if (!signal.hasCachedValue) {
           signal.cachedValue = signal.fetch();
+          signal.hasCachedValue = true;
         }
-        return signal.cachedValue;
+        return signal.cachedValue as T;
       }
   }
 }

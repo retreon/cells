@@ -106,4 +106,53 @@ describe('source', () => {
 
     dispose();
   });
+
+  it('handles undefined values correctly', () => {
+    let returnUndefined = true;
+    const undefinedSource = source(() => {
+      return returnUndefined ? undefined : 'defined';
+    });
+
+    expect(get(undefinedSource)).toBe(undefined);
+
+    // Should cache undefined when watched
+    const dispose = watch(undefinedSource, () => {});
+    expect(get(undefinedSource)).toBe(undefined);
+    expect(get(undefinedSource)).toBe(undefined); // Should use cached undefined
+
+    dispose();
+
+    // Should fetch fresh after unwatched
+    returnUndefined = false;
+    expect(get(undefinedSource)).toBe('defined');
+  });
+
+  it('resets cache flag when subscription fires', () => {
+    let value = 0;
+    let onChange: (() => void) | undefined;
+
+    const counter = source(
+      () => ++value,
+      (cb) => {
+        onChange = cb;
+        return () => {
+          onChange = undefined;
+        };
+      },
+    );
+
+    // Watch the source - should cache first value
+    const dispose = watch(counter, () => {});
+    expect(get(counter)).toBe(1);
+    expect(get(counter)).toBe(1); // Should use cached value
+
+    // Trigger subscription change
+    onChange?.();
+
+    // Should fetch fresh value after subscription fires
+    expect(get(counter)).toBe(2);
+    expect(get(counter)).toBe(2); // Should cache the new value
+
+    dispose();
+  });
 });

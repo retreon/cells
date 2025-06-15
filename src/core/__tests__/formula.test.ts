@@ -225,4 +225,70 @@ describe('formula', () => {
     expect(get(level2)).toBe(2 * 2 + 100); // 104
     expect(fetchCount).toBe(2);
   });
+
+  it('handles undefined values correctly', () => {
+    let computeCount = 0;
+    const undefinedCell = cell<string | undefined>(undefined);
+    const undefinedFormula = formula(() => {
+      computeCount++;
+      return get(undefinedCell);
+    });
+
+    expect(get(undefinedFormula)).toBe(undefined);
+    expect(computeCount).toBe(1);
+
+    // Should cache undefined value - no recomputation
+    expect(get(undefinedFormula)).toBe(undefined);
+    expect(computeCount).toBe(1);
+
+    // Change to a real value
+    batch((swap) => {
+      swap(undefinedCell, 'hello');
+    });
+
+    expect(get(undefinedFormula)).toBe('hello');
+    expect(computeCount).toBe(2);
+
+    // Should cache the string value
+    expect(get(undefinedFormula)).toBe('hello');
+    expect(computeCount).toBe(2);
+
+    // Change back to undefined
+    batch((swap) => {
+      swap(undefinedCell, undefined);
+    });
+
+    expect(get(undefinedFormula)).toBe(undefined);
+    expect(computeCount).toBe(3);
+
+    // Should cache undefined value again
+    expect(get(undefinedFormula)).toBe(undefined);
+    expect(computeCount).toBe(3);
+  });
+
+  it('only evaluates once when cell never changes', () => {
+    let computeCount = 0;
+    const unchangedCell = cell(42);
+    const derivedFormula = formula(() => {
+      computeCount++;
+      return get(unchangedCell) * 2;
+    });
+
+    // First access should compute
+    expect(get(derivedFormula)).toBe(84);
+    expect(computeCount).toBe(1);
+
+    // Multiple subsequent accesses should use cache
+    expect(get(derivedFormula)).toBe(84);
+    expect(computeCount).toBe(1);
+
+    expect(get(derivedFormula)).toBe(84);
+    expect(computeCount).toBe(1);
+
+    expect(get(derivedFormula)).toBe(84);
+    expect(computeCount).toBe(1);
+
+    // Cell value never changed, so formula should never recompute
+    expect(computeCount).toBe(1);
+  });
 });

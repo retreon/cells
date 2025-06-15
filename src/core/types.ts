@@ -24,6 +24,7 @@ export interface Source<T> {
   version: number;
   watchers: Set<ChangeHandler>;
   isVolatile: boolean;
+  hasCachedValue: boolean;
   subscriptionDisposer?: Disposer;
 }
 
