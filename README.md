@@ -124,11 +124,13 @@ const dispose = watch(total, () => {
 dispose();
 ```
 
-### `dependencies(signal)`
+### `visitDependencies(signal, visitor)`
 
-Returns all cells and sources that a signal transitively depends on. Useful for debugging and advanced use cases.
+Visits all signals in the dependency graph. Calls the visitor function for each signal encountered and returns the set of all visited signals.
 
 ```ts
-const deps = dependencies(receipt);
-// Set { quantity, price, timestamp }
+const visited = visitDependencies(receipt, (sig) => {
+  console.log(`Found ${sig.type}`);
+});
+// Logs: "Found formula", "Found cell", "Found cell", "Found source"
 ```

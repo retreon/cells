@@ -1,30 +1,32 @@
-import type { Signal, Cell, Source, BaseSignal } from '../core/types';
+import type { Signal, BaseSignal } from '../core/types';
 import { evaluateFormula } from '../core/formula';
 
 /**
- * Recursively collects all cell and source dependencies of a signal.
+ * Visits all signals in the dependency graph of a signal.
  *
- * This function traverses the dependency graph and returns only the
- * "leaf" signals (cells and sources), not intermediate formulas.
+ * This function traverses the dependency graph and calls the visitor
+ * function for each signal encountered. Returns the set of all visited signals.
  *
  * @param signal - The signal to analyze
- * @returns A set of all cells and sources that the signal depends on
+ * @param visitor - Function called for each visited signal
+ * @returns A set of all visited signals (including the root signal)
  *
  * @example
  * ```typescript
  * const a = cell(1);
  * const b = cell(2);
  * const sum = formula(() => get(a) + get(b));
- * const doubled = formula(() => get(sum) * 2);
  *
- * const deps = dependencies(doubled);
- * // deps contains: {a, b} (not sum)
+ * const visited = visitDependencies(sum, (sig) => {
+ *   console.log(`Visiting ${sig.type}`);
+ * });
+ * // Logs: "Visiting formula", "Visiting cell", "Visiting cell"
  * ```
  */
-export function dependencies<T>(
+export function visitDependencies<T>(
   signal: Signal<T>,
-): Set<Cell<unknown> | Source<unknown>> {
-  const result = new Set<Cell<unknown> | Source<unknown>>();
+  visitor: (signal: BaseSignal) => void,
+): Set<BaseSignal> {
   const visited = new Set<BaseSignal>();
 
   function visit(sig: BaseSignal): void {
@@ -33,22 +35,19 @@ export function dependencies<T>(
     }
     visited.add(sig);
 
-    switch (sig.type) {
-      case 'cell':
-      case 'source':
-        result.add(sig);
-        break;
-      case 'formula':
-        // Ensure formula is evaluated to populate dependencies
-        evaluateFormula(sig);
-        // Recursively visit all dependencies
-        for (const [dep] of sig.dependencyVersions) {
-          visit(dep);
-        }
-        break;
+    // Call the visitor function
+    visitor(sig);
+
+    if (sig.type === 'formula') {
+      // Ensure formula is evaluated to populate dependencies
+      evaluateFormula(sig);
+      // Recursively visit all dependencies
+      for (const [dep] of sig.dependencyVersions) {
+        visit(dep);
+      }
     }
   }
 
   visit(signal);
-  return result;
+  return visited;
 }

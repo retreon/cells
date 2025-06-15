@@ -1,38 +1,54 @@
-import { cell, formula, get, batch, dependencies } from '../../index';
+import { cell, formula, get, batch, visitDependencies } from '../../index';
 
-describe('dependencies', () => {
-  it('returns cell itself for cells', () => {
+describe('visitDependencies', () => {
+  it('visits cell itself for cells', () => {
     const a = cell(1);
-    const deps = dependencies(a);
+    const visited: any[] = [];
 
-    expect(deps.size).toBe(1);
-    expect(deps.has(a)).toBe(true);
+    const visitedSet = visitDependencies(a, (sig) => {
+      visited.push(sig);
+    });
+
+    expect(visited.length).toBe(1);
+    expect(visited[0]).toBe(a);
+    expect(visitedSet.size).toBe(1);
+    expect(visitedSet.has(a)).toBe(true);
   });
 
-  it('returns direct cell dependencies for simple formulas', () => {
+  it('visits direct cell dependencies for simple formulas', () => {
     const a = cell(1);
     const b = cell(2);
     const sum = formula(() => get(a) + get(b));
 
-    const deps = dependencies(sum);
+    const visited: any[] = [];
+    const visitedSet = visitDependencies(sum, (sig) => {
+      visited.push(sig);
+    });
 
-    expect(deps.size).toBe(2);
-    expect(deps.has(a)).toBe(true);
-    expect(deps.has(b)).toBe(true);
+    expect(visited.length).toBe(3); // formula + 2 cells
+    expect(visited).toContain(sum);
+    expect(visited).toContain(a);
+    expect(visited).toContain(b);
+    expect(visitedSet.size).toBe(3);
   });
 
-  it('returns transitive dependencies for nested formulas', () => {
+  it('visits transitive dependencies for nested formulas', () => {
     const a = cell(1);
     const b = cell(2);
     const sum = formula(() => get(a) + get(b));
     const doubled = formula(() => get(sum) * 2);
 
-    const deps = dependencies(doubled);
+    const visited: any[] = [];
+    visitDependencies(doubled, (sig) => {
+      visited.push(sig);
+    });
 
-    // Should only include cells, not intermediate formulas
-    expect(deps.size).toBe(2);
-    expect(deps.has(a)).toBe(true);
-    expect(deps.has(b)).toBe(true);
+    // Should include all signals: doubled, sum, a, b
+    expect(visited.length).toBe(4);
+    expect(visited).toContain(doubled);
+    expect(visited).toContain(sum);
+    expect(visited).toContain(a);
+    expect(visited).toContain(b);
   });
 
   it('handles dynamic dependencies', () => {
@@ -41,22 +57,30 @@ describe('dependencies', () => {
     const b = cell(2);
     const dynamic = formula(() => (get(condition) ? get(a) : get(b)));
 
-    // When condition is true, depends on condition and a
-    let deps = dependencies(dynamic);
-    expect(deps.size).toBe(2);
-    expect(deps.has(condition)).toBe(true);
-    expect(deps.has(a)).toBe(true);
+    // When condition is true, visits condition and a
+    let visited: any[] = [];
+    visitDependencies(dynamic, (sig) => {
+      visited.push(sig);
+    });
+    expect(visited).toContain(dynamic);
+    expect(visited).toContain(condition);
+    expect(visited).toContain(a);
+    expect(visited).not.toContain(b);
 
     // Change condition
     batch((swap) => {
       swap(condition, false);
     });
 
-    // Now depends on condition and b
-    deps = dependencies(dynamic);
-    expect(deps.size).toBe(2);
-    expect(deps.has(condition)).toBe(true);
-    expect(deps.has(b)).toBe(true);
+    // Now visits condition and b
+    visited = [];
+    visitDependencies(dynamic, (sig) => {
+      visited.push(sig);
+    });
+    expect(visited).toContain(dynamic);
+    expect(visited).toContain(condition);
+    expect(visited).toContain(b);
+    expect(visited).not.toContain(a);
   });
 
   it('handles deeply nested formulas', () => {
@@ -65,11 +89,16 @@ describe('dependencies', () => {
     const c = formula(() => get(b) * 3);
     const d = formula(() => get(c) * 4);
 
-    const deps = dependencies(d);
+    const visited: any[] = [];
+    visitDependencies(d, (sig) => {
+      visited.push(sig);
+    });
 
-    // Should only include the root cell
-    expect(deps.size).toBe(1);
-    expect(deps.has(a)).toBe(true);
+    // Should visit all signals in the chain
+    expect(visited).toContain(d);
+    expect(visited).toContain(c);
+    expect(visited).toContain(b);
+    expect(visited).toContain(a);
   });
 
   it('handles multiple paths to same dependency', () => {
@@ -78,18 +107,42 @@ describe('dependencies', () => {
     const c = formula(() => get(a) * 3);
     const sum = formula(() => get(b) + get(c));
 
-    const deps = dependencies(sum);
+    const visited: any[] = [];
+    const visitedSet = visitDependencies(sum, (sig) => {
+      visited.push(sig);
+    });
 
-    // Should only include 'a' once
-    expect(deps.size).toBe(1);
-    expect(deps.has(a)).toBe(true);
+    // Should visit each signal only once
+    expect(visitedSet.size).toBe(4); // sum, b, c, a
+    expect(visited.filter((sig) => sig === a).length).toBe(1);
   });
 
-  it('returns empty set for formulas with no dependencies', () => {
+  it('returns empty visitor calls for formulas with no dependencies', () => {
     const constant = formula(() => 42);
 
-    const deps = dependencies(constant);
+    const visited: any[] = [];
+    visitDependencies(constant, (sig) => {
+      visited.push(sig);
+    });
 
-    expect(deps.size).toBe(0);
+    expect(visited.length).toBe(1); // Just the formula itself
+    expect(visited[0]).toBe(constant);
+  });
+
+  it('allows filtering during visitation', () => {
+    const a = cell(1);
+    const b = cell(2);
+    const sum = formula(() => get(a) + get(b));
+
+    const cellsOnly: any[] = [];
+    visitDependencies(sum, (sig) => {
+      if (sig.type === 'cell') {
+        cellsOnly.push(sig);
+      }
+    });
+
+    expect(cellsOnly.length).toBe(2);
+    expect(cellsOnly).toContain(a);
+    expect(cellsOnly).toContain(b);
   });
 });

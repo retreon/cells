@@ -4,7 +4,7 @@ export { source } from './core/source';
 export { get } from './core/get';
 export { batch } from './core/batch';
 export { watch } from './core/watcher';
-export { dependencies } from './utils/dependencies';
+export { visitDependencies } from './utils/dependencies';
 export type { Cell, Formula, Source, Signal } from './core/types';
 export type { SwapFunction } from './core/batch';
 export type { Disposer } from './core/types';

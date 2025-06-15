@@ -1,6 +1,6 @@
 import type { Signal, Disposer, ChangeHandler, Cell, Source } from './types';
 import { nextVersion } from './version';
-import { dependencies } from '../utils/dependencies';
+import { visitDependencies } from '../utils/dependencies';
 
 /**
  * Watches a signal for changes and calls the handler when it updates.
@@ -73,7 +73,12 @@ export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
     // When dependencies change, update subscriptions and notify
     const wrappedHandler = (): void => {
       // Get current dependencies
-      const currentDeps = dependencies(signal);
+      const currentDeps = new Set<Cell<unknown> | Source<unknown>>();
+      visitDependencies(signal, (sig) => {
+        if (sig.type === 'cell' || sig.type === 'source') {
+          currentDeps.add(sig);
+        }
+      });
 
       // Remove watchers for dependencies that are no longer used
       for (const [dep, disposer] of depWatchers) {
@@ -96,7 +101,13 @@ export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
     };
 
     // Set up initial dependencies
-    const initialDeps = dependencies(signal);
+    const initialDeps = new Set<Cell<unknown> | Source<unknown>>();
+    visitDependencies(signal, (sig) => {
+      if (sig.type === 'cell' || sig.type === 'source') {
+        initialDeps.add(sig);
+      }
+    });
+
     for (const dep of initialDeps) {
       const disposer = watch(dep, wrappedHandler);
       depWatchers.set(dep, disposer);
