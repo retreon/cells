@@ -13,6 +13,7 @@ export interface Formula<T> {
   version: number;
   dependencyVersions: Map<BaseSignal, number>;
   watchers: Set<ChangeHandler>;
+  isVolatile: boolean;
 }
 
 export interface Source<T> {

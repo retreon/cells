@@ -1,4 +1,4 @@
-import { cell, formula, get, batch, watch } from '../../index';
+import { cell, formula, get, batch, watch, source } from '../../index';
 
 describe('formula', () => {
   it('computes derived values', () => {
@@ -130,5 +130,99 @@ describe('formula', () => {
 
     expect(get(b)).toBe(4);
     expect(get(c)).toBe(12);
+  });
+
+  it('always recomputes when depending on volatile sources', () => {
+    let fetchCount = 0;
+    const volatileSource = source(() => {
+      fetchCount++;
+      return Math.random();
+    });
+
+    const derived = formula(() => get(volatileSource) * 2);
+
+    // First access should compute
+    const value1 = get(derived);
+    expect(fetchCount).toBe(1);
+
+    // Second access should recompute because source is volatile
+    const value2 = get(derived);
+    expect(fetchCount).toBe(2);
+
+    // Values should be different (since source returns random values)
+    expect(value1).not.toBe(value2);
+  });
+
+  it('recomputes when depending on multiple volatile sources', () => {
+    let fetchCount1 = 0;
+    let fetchCount2 = 0;
+
+    const source1 = source(() => {
+      fetchCount1++;
+      return fetchCount1;
+    });
+
+    const source2 = source(() => {
+      fetchCount2++;
+      return fetchCount2 * 10;
+    });
+
+    const combined = formula(() => get(source1) + get(source2));
+
+    // First access
+    expect(get(combined)).toBe(1 + 10); // 1 + 10 = 11
+    expect(fetchCount1).toBe(1);
+    expect(fetchCount2).toBe(1);
+
+    // Second access should refetch both sources
+    expect(get(combined)).toBe(2 + 20); // 2 + 20 = 22
+    expect(fetchCount1).toBe(2);
+    expect(fetchCount2).toBe(2);
+  });
+
+  it('recomputes when mixing cells and volatile sources', () => {
+    let fetchCount = 0;
+    const cell1 = cell(5);
+    const volatileSource = source(() => {
+      fetchCount++;
+      return fetchCount;
+    });
+
+    const mixed = formula(() => get(cell1) + get(volatileSource));
+
+    // First access
+    expect(get(mixed)).toBe(5 + 1); // 5 + 1 = 6
+    expect(fetchCount).toBe(1);
+
+    // Second access should refetch source but not cell
+    expect(get(mixed)).toBe(5 + 2); // 5 + 2 = 7
+    expect(fetchCount).toBe(2);
+
+    // Change cell - should still refetch source
+    batch((swap) => {
+      swap(cell1, 10);
+    });
+
+    expect(get(mixed)).toBe(10 + 3); // 10 + 3 = 13
+    expect(fetchCount).toBe(3);
+  });
+
+  it('handles nested formulas with volatile sources', () => {
+    let fetchCount = 0;
+    const volatileSource = source(() => {
+      fetchCount++;
+      return fetchCount;
+    });
+
+    const level1 = formula(() => get(volatileSource) * 2);
+    const level2 = formula(() => get(level1) + 100);
+
+    // First access
+    expect(get(level2)).toBe(1 * 2 + 100); // 102
+    expect(fetchCount).toBe(1);
+
+    // Second access should recompute entire chain
+    expect(get(level2)).toBe(2 * 2 + 100); // 104
+    expect(fetchCount).toBe(2);
   });
 });
