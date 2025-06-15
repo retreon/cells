@@ -1,7 +1,64 @@
-import type { Signal, Disposer, ChangeHandler, Cell, Source } from './types';
+import type { Signal, Disposer, ChangeHandler, Watcher } from './types';
 import { visitDependencies } from '../utils/dependencies';
 import { addCellWatcher, removeCellWatcher } from './cell';
 import { addSourceWatcher, removeSourceWatcher } from './source';
+
+const createWatcher = <T>(
+  signal: Signal<T>,
+  onChange: ChangeHandler,
+): Watcher<T> => ({
+  signal,
+  onChange,
+  dependencies: new Set(),
+});
+
+export const updateWatcherDependencies = (
+  watcher: Watcher<unknown>,
+  emit = true,
+): void => {
+  const nextDependencies = visitDependencies(watcher.signal);
+
+  // Attach watchers to any new dependencies
+  nextDependencies.forEach((dep) => {
+    if (!watcher.dependencies.has(dep)) {
+      if (dep.type === 'cell') {
+        addCellWatcher(dep, watcher);
+      } else if (dep.type === 'source') {
+        addSourceWatcher(dep, watcher);
+      }
+    }
+  });
+
+  // Remove watchers from dependencies that are no longer used
+  watcher.dependencies.forEach((dep) => {
+    if (!nextDependencies.has(dep)) {
+      if (dep.type === 'cell') {
+        removeCellWatcher(dep, watcher);
+      } else if (dep.type === 'source') {
+        removeSourceWatcher(dep, watcher);
+      }
+    }
+  });
+
+  watcher.dependencies = nextDependencies;
+
+  if (emit) {
+    watcher.onChange();
+  }
+};
+
+const disposeWatcher = (watcher: Watcher<unknown>): void => {
+  watcher.dependencies.forEach((dep) => {
+    if (dep.type === 'cell') {
+      removeCellWatcher(dep, watcher);
+    } else if (dep.type === 'source') {
+      removeSourceWatcher(dep, watcher);
+    }
+  });
+
+  // Guards agianst double disposal
+  watcher.dependencies.clear();
+};
 
 /**
  * Watches a signal for changes and calls the handler when it updates.
@@ -10,7 +67,7 @@ import { addSourceWatcher, removeSourceWatcher } from './source';
  * For formulas, the handler is called when any of their dependencies change.
  *
  * @param signal - The signal to watch
- * @param handler - Function to call when the signal changes
+ * @param onChange - Function to call when the signal changes
  * @returns A disposer function that stops watching when called
  *
  * @example
@@ -30,67 +87,10 @@ import { addSourceWatcher, removeSourceWatcher } from './source';
  */
 export const watch = <T>(
   signal: Signal<T>,
-  handler: ChangeHandler,
+  onChange: ChangeHandler,
 ): Disposer => {
-  if (signal.type === 'cell') {
-    addCellWatcher(signal, handler);
-    return () => removeCellWatcher(signal, handler);
-  } else if (signal.type === 'source') {
-    addSourceWatcher(signal, handler);
-    return () => removeSourceWatcher(signal, handler);
-  } else {
-    // For formulas, watch their dependencies instead
-    const depWatchers = new Map<Cell<unknown> | Source<unknown>, Disposer>();
+  const watcher = createWatcher(signal, onChange);
+  updateWatcherDependencies(watcher, false);
 
-    // When dependencies change, update subscriptions and notify
-    const wrappedHandler = (): void => {
-      // Get current dependencies
-      const currentDeps = new Set<Cell<unknown> | Source<unknown>>();
-      visitDependencies(signal, (sig) => {
-        if (sig.type === 'cell' || sig.type === 'source') {
-          currentDeps.add(sig);
-        }
-      });
-
-      // Remove watchers for dependencies that are no longer used
-      for (const [dep, disposer] of depWatchers) {
-        if (!currentDeps.has(dep)) {
-          disposer();
-          depWatchers.delete(dep);
-        }
-      }
-
-      // Add watchers for new dependencies
-      for (const dep of currentDeps) {
-        if (!depWatchers.has(dep)) {
-          const disposer = watch(dep, wrappedHandler);
-          depWatchers.set(dep, disposer);
-        }
-      }
-
-      // Notify the original handler
-      handler();
-    };
-
-    // Set up initial dependencies
-    const initialDeps = new Set<Cell<unknown> | Source<unknown>>();
-    visitDependencies(signal, (sig) => {
-      if (sig.type === 'cell' || sig.type === 'source') {
-        initialDeps.add(sig);
-      }
-    });
-
-    for (const dep of initialDeps) {
-      const disposer = watch(dep, wrappedHandler);
-      depWatchers.set(dep, disposer);
-    }
-
-    // Return a disposer that cleans up all dependency watchers
-    return () => {
-      for (const disposer of depWatchers.values()) {
-        disposer();
-      }
-      depWatchers.clear();
-    };
-  }
+  return () => disposeWatcher(watcher);
 };

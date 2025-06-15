@@ -25,7 +25,7 @@ import { evaluateFormula } from '../core/formula';
  */
 export function visitDependencies<T>(
   signal: Signal<T>,
-  visitor: (signal: BaseSignal) => void,
+  visitor?: (signal: BaseSignal) => void,
 ): Set<BaseSignal> {
   const visited = new Set<BaseSignal>();
 
@@ -36,7 +36,7 @@ export function visitDependencies<T>(
     visited.add(sig);
 
     // Call the visitor function
-    visitor(sig);
+    visitor?.(sig);
 
     if (sig.type === 'formula') {
       // Ensure formula is evaluated to populate dependencies

@@ -1,4 +1,4 @@
-import type { Source, ChangeHandler } from './types';
+import type { Source, Watcher } from './types';
 import { globalVersion, nextVersion } from './version';
 
 /**
@@ -6,9 +6,9 @@ import { globalVersion, nextVersion } from './version';
  */
 export const addSourceWatcher = <T>(
   source: Source<T>,
-  handler: ChangeHandler,
+  watcher: Watcher<unknown>,
 ): void => {
-  source.watchers.add(handler);
+  source.watchers.add(watcher);
 
   // For sources, transition from volatile to cached mode
   if (source.watchers.size === 1) {
@@ -25,7 +25,7 @@ export const addSourceWatcher = <T>(
 
         // Notify all watchers
         for (const watcher of source.watchers) {
-          watcher();
+          watcher.onChange();
         }
       });
     }
@@ -37,9 +37,9 @@ export const addSourceWatcher = <T>(
  */
 export const removeSourceWatcher = <T>(
   source: Source<T>,
-  handler: ChangeHandler,
+  watcher: Watcher<unknown>,
 ): void => {
-  source.watchers.delete(handler);
+  source.watchers.delete(watcher);
 
   // For sources, transition back to volatile mode if no watchers
   if (source.watchers.size === 0) {

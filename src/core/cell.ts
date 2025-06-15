@@ -1,4 +1,4 @@
-import type { Cell, ChangeHandler } from './types';
+import type { Cell, Watcher } from './types';
 import { globalVersion } from './version';
 
 /**
@@ -6,9 +6,9 @@ import { globalVersion } from './version';
  */
 export const addCellWatcher = <T>(
   cell: Cell<T>,
-  handler: ChangeHandler,
+  watcher: Watcher<unknown>,
 ): void => {
-  cell.watchers.add(handler);
+  cell.watchers.add(watcher);
 };
 
 /**
@@ -16,9 +16,9 @@ export const addCellWatcher = <T>(
  */
 export const removeCellWatcher = <T>(
   cell: Cell<T>,
-  handler: ChangeHandler,
+  watcher: Watcher<unknown>,
 ): void => {
-  cell.watchers.delete(handler);
+  cell.watchers.delete(watcher);
 };
 
 /**
