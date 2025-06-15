@@ -1,4 +1,4 @@
-import { source, get, watch } from '../../index';
+import { source, get, watch, formula } from '../../index';
 
 describe('source', () => {
   it('fetches fresh values in volatile mode', () => {
@@ -12,7 +12,10 @@ describe('source', () => {
 
   it('caches values when watched', () => {
     let value = 0;
-    const counter = source(() => ++value);
+    const counter = source(
+      () => ++value,
+      () => () => {},
+    );
 
     const dispose = watch(counter, () => {});
 
@@ -24,7 +27,10 @@ describe('source', () => {
 
   it('returns to volatile mode when unwatched', () => {
     let value = 0;
-    const counter = source(() => ++value);
+    const counter = source(
+      () => ++value,
+      () => () => {},
+    );
 
     const dispose = watch(counter, () => {});
     expect(get(counter)).toBe(1);
@@ -91,18 +97,19 @@ describe('source', () => {
   });
 
   it('handles sources without subscriptions', () => {
-    const random = source(() => Math.random());
+    let readCount = 0;
+    const random = source(() => readCount++);
 
     // Should work in volatile mode
     const val1 = get(random);
     const val2 = get(random);
     expect(val1).not.toBe(val2);
 
-    // Should cache when watched
+    // Does not cache because it cannot be subscribed
     const dispose = watch(random, () => {});
     const val3 = get(random);
     const val4 = get(random);
-    expect(val3).toBe(val4);
+    expect(val3).not.toBe(val4);
 
     dispose();
   });
@@ -154,5 +161,31 @@ describe('source', () => {
     expect(get(counter)).toBe(2); // Should cache the new value
 
     dispose();
+  });
+
+  // Edge case: To find dependencies in formulas we must execute them.
+  // Because promotion happens after collecting dependencies, transitive
+  // sources must detect this case and promote themselves automatically.
+  it('promotes sources to non-volatile on the first watch', () => {
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn(() => unsubscribe);
+    const read = vi.fn(() => true);
+
+    const value = source(read, subscribe);
+    const compute = formula(() => get(value));
+
+    expect(read).not.toHaveBeenCalled();
+    expect(subscribe).not.toHaveBeenCalled();
+
+    // Watch must evaluate the formula to find dependencies.
+    // In this first run, `value` should be promoted to non-volatile.
+    watch(compute, () => {});
+    expect(read).toHaveBeenCalledTimes(1);
+
+    expect(get(compute)).toBe(true); // Read should pull from the cache.
+    expect(read).toHaveBeenCalledTimes(1);
+
+    expect(get(compute)).toBe(true); // Again for good measure.
+    expect(read).toHaveBeenCalledTimes(1);
   });
 });

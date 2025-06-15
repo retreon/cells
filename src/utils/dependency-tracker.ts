@@ -3,14 +3,15 @@ import { recordDependencyVersion } from '../core/formula';
 
 // Module-scoped state for tracking current computation
 let currentFormula: Formula<unknown> | null = null;
+export let isInWatcherContext = false;
 
-export function trackDependency(signal: BaseSignal): void {
+export const trackDependency = (signal: BaseSignal): void => {
   if (currentFormula) {
     recordDependencyVersion(currentFormula, signal);
   }
-}
+};
 
-export function withTracking<T>(formula: Formula<T>, fn: () => T): T {
+export const withTracking = <T>(formula: Formula<T>, fn: () => T): T => {
   const previousFormula = currentFormula;
   currentFormula = formula;
 
@@ -19,4 +20,15 @@ export function withTracking<T>(formula: Formula<T>, fn: () => T): T {
   } finally {
     currentFormula = previousFormula;
   }
-}
+};
+
+export const withWatcherContext = <T>(fn: () => T): T => {
+  const previousWatcherContext = isInWatcherContext;
+  isInWatcherContext = true;
+
+  try {
+    return fn();
+  } finally {
+    isInWatcherContext = previousWatcherContext;
+  }
+};

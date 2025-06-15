@@ -2,6 +2,7 @@ import type { Signal, Disposer, ChangeHandler, Watcher } from './types';
 import { visitDependencies } from '../utils/dependencies';
 import { addCellWatcher, removeCellWatcher } from './cell';
 import { addSourceWatcher, removeSourceWatcher } from './source';
+import { withWatcherContext } from '../utils/dependency-tracker';
 
 const createWatcher = <T>(
   signal: Signal<T>,
@@ -16,7 +17,9 @@ export const updateWatcherDependencies = (
   watcher: Watcher<unknown>,
   emit = true,
 ): void => {
-  const nextDependencies = visitDependencies(watcher.signal);
+  const nextDependencies = withWatcherContext(() =>
+    visitDependencies(watcher.signal),
+  );
 
   // Attach watchers to any new dependencies
   nextDependencies.forEach((dep) => {

@@ -1,5 +1,52 @@
 import type { Source, Watcher } from './types';
 import { globalVersion, nextVersion } from './version';
+import { isInWatcherContext } from '../utils/dependency-tracker';
+
+/**
+ * Evaluates a source signal, handling both volatile and cached modes.
+ */
+export const evaluateSource = <T>(source: Source<T>): T => {
+  // Promote immediately if this is the first run in a watcher context.
+  if (source.isVolatile && isInWatcherContext) {
+    promoteSourceNonVolatileSource(source);
+  }
+
+  if (source.isVolatile) {
+    // In volatile mode, always fetch fresh
+    return source.fetch();
+  } else {
+    // In cached mode, fetch if we haven't cached a value yet
+    if (!source.hasCachedValue) {
+      source.cachedValue = source.fetch();
+      source.hasCachedValue = true;
+    }
+    return source.cachedValue as T;
+  }
+};
+
+/**
+ * Promotes a source from volatile to cached mode.
+ * This is shared logic used by both watcher context promotion and first watcher addition.
+ */
+const promoteSourceNonVolatileSource = <T>(source: Source<T>): void => {
+  if (!source.isVolatile) return; // Already cached
+
+  // If source has a subscribe function, set up the subscription
+  if (source.subscribe) {
+    source.isVolatile = false;
+    source.subscriptionDisposer = source.subscribe(() => {
+      // When source changes, update version and notify watchers
+      source.cachedValue = undefined;
+      source.hasCachedValue = false;
+      source.version = nextVersion();
+
+      // Notify all watchers
+      for (const watcher of source.watchers) {
+        watcher.onChange();
+      }
+    });
+  }
+};
 
 /**
  * Adds a watcher to a source.
@@ -10,25 +57,9 @@ export const addSourceWatcher = <T>(
 ): void => {
   source.watchers.add(watcher);
 
-  // For sources, transition from volatile to cached mode
+  // For sources, transition from volatile to cached mode when first watcher is added
   if (source.watchers.size === 1) {
-    // First watcher - transition to cached mode
-    source.isVolatile = false;
-
-    // If source has a subscribe function, set up the subscription
-    if (source.subscribe) {
-      source.subscriptionDisposer = source.subscribe(() => {
-        // When source changes, update version and notify watchers
-        source.cachedValue = undefined;
-        source.hasCachedValue = false;
-        source.version = nextVersion();
-
-        // Notify all watchers
-        for (const watcher of source.watchers) {
-          watcher.onChange();
-        }
-      });
-    }
+    promoteSourceNonVolatileSource(source);
   }
 };
 

@@ -1,6 +1,7 @@
 import type { Signal } from './types';
 import { trackDependency } from '../utils/dependency-tracker';
 import { evaluateFormula } from './formula';
+import { evaluateSource } from './source';
 
 /**
  * Reads the current value of a signal.
@@ -30,16 +31,6 @@ export const get = <T>(signal: Signal<T>): T => {
     case 'formula':
       return evaluateFormula(signal);
     case 'source':
-      if (signal.isVolatile) {
-        // In volatile mode, always fetch fresh
-        return signal.fetch();
-      } else {
-        // In cached mode, fetch if we haven't cached a value yet
-        if (!signal.hasCachedValue) {
-          signal.cachedValue = signal.fetch();
-          signal.hasCachedValue = true;
-        }
-        return signal.cachedValue as T;
-      }
+      return evaluateSource(signal);
   }
 };

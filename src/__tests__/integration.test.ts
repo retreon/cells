@@ -59,89 +59,6 @@ describe('Integration Tests', () => {
     });
   });
 
-  describe('Live Dashboard Example', () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it.skip('combines volatile and stable data for a monitoring dashboard', () => {
-      // Stable configuration
-      const apiEndpoint = cell('https://api.example.com/stats');
-
-      // Mock API responses
-      let apiCallCount = 0;
-      const mockApiResponse = () => {
-        apiCallCount++;
-        return {
-          users: 100 + apiCallCount * 10,
-          requests: 1000 + apiCallCount * 100,
-          errors: apiCallCount % 3,
-        };
-      };
-
-      // Volatile data source that fetches from API
-      const apiData = source(() => mockApiResponse());
-
-      // Current timestamp (volatile) - using monotonic counter for tests
-      let timestampCounter = 1000;
-      const timestamp = source(() => ++timestampCounter);
-
-      // Computed dashboard state
-      const dashboard = formula(() => ({
-        stats: get(apiData),
-        lastUpdated: get(timestamp),
-        endpoint: get(apiEndpoint),
-      }));
-
-      // Initial read
-      const initial = get(dashboard);
-      expect(initial.stats.users).toBe(110);
-      expect(initial.stats.requests).toBe(1100);
-      expect(initial.endpoint).toBe('https://api.example.com/stats');
-
-      // Second read gets fresh data (volatile)
-      const second = get(dashboard);
-      expect(second.stats.users).toBe(120);
-      expect(second.lastUpdated).toBeGreaterThan(initial.lastUpdated);
-
-      // Watch the dashboard - sources become cached
-      const events: Array<{
-        stats: { users: number; requests: number; errors: number };
-        lastUpdated: number;
-        endpoint: string;
-      }> = [];
-      const dispose = watch(dashboard, () => {
-        events.push(get(dashboard));
-      });
-
-      // Now reads are cached
-      const cached1 = get(dashboard);
-      const cached2 = get(dashboard);
-      expect(cached1).toBe(cached2);
-      expect(cached1.stats.users).toBe(130); // One more call from watch
-
-      // Change configuration
-      batch((swap) => {
-        swap(apiEndpoint, 'https://api.example.com/v2/stats');
-      });
-
-      expect(events).toHaveLength(1);
-      expect(events[0].endpoint).toBe('https://api.example.com/v2/stats');
-
-      dispose();
-
-      // After unwatching, sources become volatile again
-      const volatile1 = get(dashboard);
-      const volatile2 = get(dashboard);
-      expect(volatile1.stats.users).toBe(140);
-      expect(volatile2.stats.users).toBe(150);
-    });
-  });
-
   describe('Form Validation Example', () => {
     it.skip('implements reactive form validation with dynamic rules', () => {
       // Form fields
@@ -306,14 +223,18 @@ describe('Integration Tests', () => {
   });
 
   describe('Source Subscription Lifecycle', () => {
-    it.skip('manages source subscriptions based on watchers', () => {
+    it('manages source subscriptions based on watchers', () => {
       let subscribeCount = 0;
       let unsubscribeCount = 0;
+      let readCount = 0;
       let currentValue = 0;
       let onChange: (() => void) | undefined;
 
       const counter = source(
-        () => currentValue,
+        () => {
+          readCount++;
+          return currentValue;
+        },
         (cb) => {
           subscribeCount++;
           onChange = cb;
@@ -327,19 +248,36 @@ describe('Integration Tests', () => {
       // Initially volatile - no subscription
       expect(subscribeCount).toBe(0);
       expect(get(counter)).toBe(0);
+      expect(readCount).toBe(1);
+
       currentValue = 1;
       expect(get(counter)).toBe(1); // Fresh value
+      expect(readCount).toBe(2);
 
       // Add first watcher - triggers subscription
       const dispose1 = watch(counter, () => {});
       expect(subscribeCount).toBe(1);
       expect(unsubscribeCount).toBe(0);
 
-      // Now cached
+      // No new reads. We haven't fetched the value yet.
+      expect(readCount).toBe(2);
       currentValue = 2;
-      expect(get(counter)).toBe(0); // Still cached
+
+      expect(get(counter)).toBe(2); // Fresh read, new value
+      expect(readCount).toBe(3);
+
+      // Cached this time!
+      expect(get(counter)).toBe(2);
+      expect(readCount).toBe(3);
+
+      currentValue = 3;
+      expect(get(counter)).toBe(2); // Still cached
+      expect(readCount).toBe(3);
+
       onChange?.(); // Trigger update
-      expect(get(counter)).toBe(2); // Now updated
+      expect(readCount).toBe(3);
+      expect(get(counter)).toBe(3); // Cache invalidated, fresh read
+      expect(readCount).toBe(4);
 
       // Add second watcher - no new subscription
       const dispose2 = watch(counter, () => {});
@@ -355,7 +293,14 @@ describe('Integration Tests', () => {
 
       // Back to volatile
       currentValue = 3;
-      expect(get(counter)).toBe(3); // Fresh value again
+      expect(readCount).toBe(4);
+
+      // Back to volatile mode
+      expect(get(counter)).toBe(3);
+      expect(readCount).toBe(5);
+
+      expect(get(counter)).toBe(3);
+      expect(readCount).toBe(6);
     });
   });
 });
