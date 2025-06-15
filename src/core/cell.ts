@@ -1,5 +1,25 @@
-import type { Cell } from './types';
+import type { Cell, ChangeHandler } from './types';
 import { globalVersion } from './version';
+
+/**
+ * Adds a watcher to a cell.
+ */
+export const addCellWatcher = <T>(
+  cell: Cell<T>,
+  handler: ChangeHandler,
+): void => {
+  cell.watchers.add(handler);
+};
+
+/**
+ * Removes a watcher from a cell.
+ */
+export const removeCellWatcher = <T>(
+  cell: Cell<T>,
+  handler: ChangeHandler,
+): void => {
+  cell.watchers.delete(handler);
+};
 
 /**
  * Creates a mutable cell that holds a value.
@@ -18,11 +38,9 @@ import { globalVersion } from './version';
  * console.log(get(count)); // 5
  * ```
  */
-export function cell<T>(initialValue: T): Cell<T> {
-  return {
-    type: 'cell',
-    value: initialValue,
-    version: globalVersion,
-    watchers: new Set(),
-  };
-}
+export const cell = <T>(initialValue: T): Cell<T> => ({
+  type: 'cell',
+  value: initialValue,
+  version: globalVersion,
+  watchers: new Set(),
+});

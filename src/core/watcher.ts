@@ -1,6 +1,7 @@
 import type { Signal, Disposer, ChangeHandler, Cell, Source } from './types';
-import { nextVersion } from './version';
 import { visitDependencies } from '../utils/dependencies';
+import { addCellWatcher, removeCellWatcher } from './cell';
+import { addSourceWatcher, removeSourceWatcher } from './source';
 
 /**
  * Watches a signal for changes and calls the handler when it updates.
@@ -27,47 +28,16 @@ import { visitDependencies } from '../utils/dependencies';
  * dispose(); // Stop watching
  * ```
  */
-export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
-  if (signal.type === 'cell' || signal.type === 'source') {
-    // For cells and sources, directly add the handler
-    signal.watchers.add(handler);
-
-    // For sources, transition from volatile to cached mode
-    if (signal.type === 'source' && signal.watchers.size === 1) {
-      // First watcher - transition to cached mode
-      signal.isVolatile = false;
-
-      // If source has a subscribe function, set up the subscription
-      if (signal.subscribe) {
-        signal.subscriptionDisposer = signal.subscribe(() => {
-          // When source changes, update version and notify watchers
-          signal.cachedValue = undefined;
-          signal.hasCachedValue = false;
-          signal.version = nextVersion();
-          handler();
-        });
-      }
-    }
-
-    // Return a disposer function
-    return () => {
-      signal.watchers.delete(handler);
-
-      // For sources, transition back to volatile mode if no watchers
-      if (signal.type === 'source' && signal.watchers.size === 0) {
-        signal.isVolatile = true;
-
-        // Clean up subscription
-        if (signal.subscriptionDisposer) {
-          signal.subscriptionDisposer();
-          signal.subscriptionDisposer = undefined;
-        }
-
-        // Clear cached value
-        signal.cachedValue = undefined;
-        signal.hasCachedValue = false;
-      }
-    };
+export const watch = <T>(
+  signal: Signal<T>,
+  handler: ChangeHandler,
+): Disposer => {
+  if (signal.type === 'cell') {
+    addCellWatcher(signal, handler);
+    return () => removeCellWatcher(signal, handler);
+  } else if (signal.type === 'source') {
+    addSourceWatcher(signal, handler);
+    return () => removeSourceWatcher(signal, handler);
   } else {
     // For formulas, watch their dependencies instead
     const depWatchers = new Map<Cell<unknown> | Source<unknown>, Disposer>();
@@ -123,4 +93,4 @@ export function watch<T>(signal: Signal<T>, handler: ChangeHandler): Disposer {
       depWatchers.clear();
     };
   }
-}
+};

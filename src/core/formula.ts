@@ -26,29 +26,25 @@ import { globalVersion } from './version';
  * console.log(get(sum)); // 13
  * ```
  */
-export function formula<T>(compute: () => T): Formula<T> {
-  const f: Formula<T> = {
-    type: 'formula',
-    compute,
-    cachedValue: undefined,
-    version: -1,
-    dependencyVersions: new Map(),
-    watchers: new Set(),
-    isVolatile: false,
-  };
+export const formula = <T>(compute: () => T): Formula<T> => ({
+  type: 'formula',
+  compute,
+  cachedValue: undefined,
+  version: -1,
+  dependencyVersions: new Map(),
+  watchers: new Set(),
+  isVolatile: false,
+});
 
-  return f;
-}
-
-export function recordDependencyVersion(
+export const recordDependencyVersion = (
   formula: Formula<unknown>,
   dependency: BaseSignal,
-): void {
+): void => {
   // Record the current version of the dependency
   formula.dependencyVersions.set(dependency, dependency.version);
-}
+};
 
-function isStale<T>(formula: Formula<T>): boolean {
+const isStale = <T>(formula: Formula<T>): boolean => {
   // Volatile formulas are always stale
   if (formula.isVolatile) {
     return true;
@@ -73,9 +69,9 @@ function isStale<T>(formula: Formula<T>): boolean {
 
   // Also stale if never computed
   return formula.version === -1;
-}
+};
 
-export function evaluateFormula<T>(formula: Formula<T>): T {
+export const evaluateFormula = <T>(formula: Formula<T>): T => {
   if (!isStale(formula)) {
     return formula.cachedValue as T;
   }
@@ -102,4 +98,4 @@ export function evaluateFormula<T>(formula: Formula<T>): T {
   formula.version = globalVersion;
 
   return value;
-}
+};

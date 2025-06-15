@@ -20,7 +20,7 @@ import { evaluateFormula } from './formula';
  * console.log(get(doubled)); // 10
  * ```
  */
-export function get<T>(signal: Signal<T>): T {
+export const get = <T>(signal: Signal<T>): T => {
   // Track this signal as a dependency of the current formula
   trackDependency(signal);
 
@@ -42,4 +42,4 @@ export function get<T>(signal: Signal<T>): T {
         return signal.cachedValue as T;
       }
   }
-}
+};
