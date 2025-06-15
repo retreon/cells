@@ -1,5 +1,5 @@
 import type { Source, Watcher } from './types';
-import { globalVersion, nextVersion } from './version';
+import { globalVersion, nextVersion } from '../utils/version';
 import { isInWatcherContext } from '../utils/dependency-tracker';
 
 /**

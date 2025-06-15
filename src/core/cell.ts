@@ -1,5 +1,5 @@
 import type { Cell, Watcher } from './types';
-import { globalVersion } from './version';
+import { globalVersion } from '../utils/version';
 
 /**
  * Adds a watcher to a cell.

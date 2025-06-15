@@ -1,6 +1,6 @@
 import type { Formula, BaseSignal } from './types';
 import { withTracking } from '../utils/dependency-tracker';
-import { globalVersion } from './version';
+import { globalVersion } from '../utils/version';
 
 /**
  * Creates a formula that computes a derived value from other signals.

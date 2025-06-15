@@ -1,5 +1,5 @@
 import type { Cell, Watcher } from './types';
-import { nextVersion } from './version';
+import { nextVersion } from '../utils/version';
 import { updateWatcherDependencies } from './watcher';
 
 // Module-scoped state for tracking batch context
