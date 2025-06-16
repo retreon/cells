@@ -5,6 +5,7 @@ export { get } from './core/get';
 export { batch } from './core/batch';
 export { watch } from './core/watcher';
 export { visitDependencies } from './utils/dependencies';
+export { untracked } from './utils/dependency-tracker';
 export type { Cell, Formula, Source, Signal } from './core/types';
 export type { SwapFunction } from './core/batch';
 export type { Disposer } from './core/types';

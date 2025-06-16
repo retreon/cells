@@ -1,4 +1,12 @@
-import { cell, formula, get, batch, watch, source } from '../../index';
+import {
+  cell,
+  formula,
+  get,
+  batch,
+  watch,
+  source,
+  untracked,
+} from '../../index';
 
 describe('formula', () => {
   it('computes derived values', () => {
@@ -299,5 +307,146 @@ describe('formula', () => {
     get(value); // Initialize
 
     expect(compute.mock.contexts).toEqual([undefined]);
+  });
+
+  describe('untracked', () => {
+    it('prevents dependency tracking', () => {
+      const a = cell(1);
+      const b = cell(2);
+
+      const result = formula(() => {
+        const trackedValue = get(a); // This creates a dependency
+        const untrackedValue = untracked(() => get(b)); // This does not
+        return trackedValue + untrackedValue;
+      });
+
+      expect(get(result)).toBe(3); // 1 + 2
+
+      // Changing 'a' should trigger recomputation
+      batch((swap) => {
+        swap(a, 10);
+      });
+      expect(get(result)).toBe(12); // 10 + 2
+
+      // Changing 'b' should NOT trigger recomputation (not a dependency)
+      batch((swap) => {
+        swap(b, 20);
+      });
+      expect(get(result)).toBe(12); // Still 10 + 2, not 10 + 20
+    });
+
+    it('works with nested untracked calls', () => {
+      const a = cell(1);
+      const b = cell(2);
+      const c = cell(3);
+
+      const result = formula(() => {
+        const trackedValue = get(a);
+        const untrackedValue = untracked(() => {
+          const innerTracked = get(b); // Still untracked
+          const nestedUntracked = untracked(() => get(c)); // Also untracked
+          return innerTracked + nestedUntracked;
+        });
+        return trackedValue + untrackedValue;
+      });
+
+      expect(get(result)).toBe(6); // 1 + (2 + 3)
+
+      // Only 'a' should be a dependency
+      batch((swap) => {
+        swap(a, 10);
+      });
+      expect(get(result)).toBe(15); // 10 + (2 + 3)
+
+      // 'b' and 'c' should not trigger updates
+      batch((swap) => {
+        swap(b, 20);
+        swap(c, 30);
+      });
+      expect(get(result)).toBe(15); // Still 10 + (2 + 3)
+    });
+
+    it('allows reading volatile sources without creating dependencies', () => {
+      const a = cell(1);
+      const b = cell(1);
+
+      const result = formula(() => {
+        const trackedValue = get(a);
+        const untrackedValue = untracked(() => get(b));
+        return trackedValue + untrackedValue;
+      });
+
+      const onChange = vi.fn();
+      const dispose = watch(result, onChange);
+
+      // First access
+      expect(get(result)).toBe(2); // 1 + 1
+      expect(onChange).not.toHaveBeenCalled(); // No change yet
+
+      // Changing the tracked cell should recompute, but still not refetch volatile
+      batch((swap) => {
+        swap(a, 5);
+      });
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(get(result)).toBe(6); // 5 + 1
+
+      batch((swap) => {
+        swap(b, 10);
+      });
+
+      // Changing the untracked cell should NOT trigger recompute
+      expect(onChange).toHaveBeenCalledTimes(1); // Still 6, no change
+      expect(get(result)).toBe(6); // Still 5 + 1, b is not tracked
+
+      batch((swap) => {
+        swap(a, 20);
+      });
+
+      // Recomputes, incidentally reading b again
+      expect(onChange).toHaveBeenCalledTimes(2);
+      expect(get(result)).toBe(30); // 20 + 10
+
+      dispose();
+    });
+
+    it('can be used outside of formula context', () => {
+      const a = cell(1);
+
+      // Should work fine even when not inside a formula
+      const result = untracked(() => get(a));
+      expect(result).toBe(1);
+    });
+
+    it('restores tracking context after untracked block', () => {
+      const a = cell(1);
+      const b = cell(2);
+      const c = cell(3);
+
+      const result = formula(() => {
+        const before = get(a); // Tracked
+        const during = untracked(() => get(b)); // Untracked
+        const after = get(c); // Tracked again
+        return before + during + after;
+      });
+
+      expect(get(result)).toBe(6); // 1 + 2 + 3
+
+      // 'a' and 'c' should be dependencies, 'b' should not
+      batch((swap) => {
+        swap(a, 10);
+      });
+      expect(get(result)).toBe(15); // 10 + 2 + 3
+
+      batch((swap) => {
+        swap(c, 30);
+      });
+      expect(get(result)).toBe(42); // 10 + 2 + 30
+
+      batch((swap) => {
+        swap(b, 20);
+      });
+      expect(get(result)).toBe(42); // Still 10 + 2 + 30 (b is not tracked)
+    });
   });
 });

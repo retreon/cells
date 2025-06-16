@@ -140,6 +140,22 @@ const dispose = watch(total, () => {
 dispose();
 ```
 
+### `untracked(fn)`
+
+Executes a function without tracking any signal dependencies. When called inside a formula computation, any signals read within the untracked function will not be registered as dependencies.
+
+```ts
+const a = cell(1);
+const b = cell(2);
+
+// result only recomputes when 'a' changes, not when 'b' changes
+const result = formula(() => {
+  const trackedValue = get(a); // This creates a dependency
+  const untrackedValue = untracked(() => get(b)); // This does not
+  return trackedValue + untrackedValue;
+});
+```
+
 ### `visitDependencies(signal, visitor)`
 
 Visits all signals in the dependency graph. Calls the visitor function for each signal encountered and returns the set of all visited signals.
