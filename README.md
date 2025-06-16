@@ -28,9 +28,7 @@ npm install @retreon/cells
 ## Quick Example
 
 ```ts
-const { cell, formula, source, get, batch, watch } = await import(
-  '@retreon/cells'
-);
+import { cell, formula, source, get, batch, watch } from '@retreon/cells';
 
 // Mutable state
 const quantity = cell(2);
