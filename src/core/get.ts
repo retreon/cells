@@ -25,12 +25,11 @@ export const get = <T>(signal: Signal<T>): T => {
   // Track this signal as a dependency of the current formula
   trackDependency(signal);
 
-  switch (signal.t) {
-    case 'c':
-      return signal.c;
-    case 'f':
-      return evaluateFormula(signal);
-    case 's':
-      return evaluateSource(signal);
+  if (signal.t === 'c') {
+    return signal.c;
+  } else if (signal.t === 'f') {
+    return evaluateFormula(signal);
+  } else {
+    return evaluateSource(signal);
   }
 };
