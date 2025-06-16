@@ -6,8 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-## [0.1.0] - 2025-06-16
-
 ## [0.1.0] - 2025-06-15
 
 ### Added
@@ -18,5 +16,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Watchers for observing changes
 
 [Unreleased]: https://github.com/retreon/cells/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/retreon/cells/compare/v0.1.0...v0.1.0
 [0.1.0]: https://github.com/retreon/cells/releases/tag/v0.1.0
