@@ -1,16 +1,23 @@
-# @retreon/cells
-
-A minimal reactive state management library inspired by spreadsheet semantics.
+<div align="center">
+  <h1>@retreon/cells</h1>
+  <p>A minimal state management library inspired by spreadsheet semantics.</p>
+</div>
 
 ## Purpose
 
-Retreon Cells provides a signal-based reactive harness that intelligently switches between push-based reactivity (when observed) and pull-based reactivity (when inert).
+Retreon Cells is an implementation of Signals.
 
-The core innovation is **[Volatile Functions](https://learn.microsoft.com/en-us/office/dev/add-ins/excel/custom-functions-volatile)**, a concept borrowed from spreadsheet programming. Volatile functions are inherently impure - they return different values even with the same inputs. The web platform is full of these: `Date.now()`, `localStorage` reads, `window.innerHeight`, and countless others.
+The driving force is support for **[Volatile Functions](https://learn.microsoft.com/en-us/office/dev/add-ins/excel/custom-functions-volatile)**, a concept borrowed from spreadsheet programming. Volatile functions are inherently impure - they return different values even with the same inputs. The web platform is full of these: `Date.now()`, `localStorage` reads, `window.innerHeight`, and countless others.
 
-Traditional reactive systems struggle with volatile data sources, often requiring manual invalidation or accepting stale values. Retreon Cells addresses this by allowing volatile sources to compose naturally within the computation graph, providing controlled reactivity without sacrificing performance. (For deeper context, see [the TC39 Signals proposal discussion](https://github.com/tc39/proposal-signals/issues/237).)
+Traditional systems struggle with volatile sources. They introduce stale reads, resource leaks, or unusable APIs outside a component context. Retreon Cells addresses this by integrating external sources directly into the computation graph, propagating cache invalidation in pull-based reactivity and upgrading to tracked values in watched contexts.
 
-While this library works standalone, it's designed as a foundation for building opinionated state management solutions.
+For more information, see [the TC39 Signals proposal discussion](https://github.com/tc39/proposal-signals/issues/237).
+
+## Design Goals
+
+This is intended as a low-level library. It's designed to be powerful, expressive, lightweight, and performant.
+
+Guardrails and convenience functions are out of scope and better suited to higher-level abstractions.
 
 ## Installation
 
@@ -20,8 +27,10 @@ npm install @retreon/cells
 
 ## Quick Example
 
-```typescript
-import { cell, formula, source, get, batch, watch } from '@retreon/cells';
+```ts
+const { cell, formula, source, get, batch, watch } = await import(
+  '@retreon/cells'
+);
 
 // Mutable state
 const quantity = cell(2);
@@ -31,7 +40,14 @@ const price = cell(19.99);
 const total = formula(() => get(quantity) * get(price));
 
 // Volatile source
-const timestamp = source(() => Date.now());
+const timestamp = source(
+  () => Date.now(),
+  (onChange) => {
+    // Timestamp sampled every second.
+    const interval = setInterval(onChange, 1_000);
+    return () => clearInterval(interval);
+  },
+);
 
 // Composed formula using both stable and volatile data
 const receipt = formula(() => ({
@@ -41,7 +57,7 @@ const receipt = formula(() => ({
 
 // Read values
 console.log(get(receipt));
-// { total: 39.98, time: 1699564823000 }
+// { total: 39.98, time: 1577836800000 }
 
 // Update state atomically
 batch((swap) => {
@@ -82,8 +98,8 @@ Bridges external data into the reactive system. Without a subscription function,
 const random = source(() => Math.random());
 
 // Cached when watched: efficient for event-driven data
-const windowWidth = source(
-  () => window.innerWidth,
+const windowSize = source(
+  () => ({ width: window.innerWidth, height: window.innerHeight }),
   (onChange) => {
     window.addEventListener('resize', onChange);
     return () => window.removeEventListener('resize', onChange);
@@ -96,7 +112,7 @@ const windowWidth = source(
 Reads the current value of any signal. When used inside a formula, automatically tracks the signal as a dependency.
 
 ```ts
-const value = get(doubled); // 0
+const value = get(doubled); // 2
 ```
 
 ### `batch(fn)`
