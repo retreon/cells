@@ -27,13 +27,12 @@ import { globalVersion } from '../utils/version';
  * ```
  */
 export const formula = <T>(compute: () => T): Formula<T> => ({
-  type: 'formula',
-  compute,
-  cachedValue: undefined,
-  version: -1,
-  dependencyVersions: new Map(),
-  watchers: new Set(),
-  isVolatile: false,
+  t: 'f',
+  f: compute,
+  c: undefined,
+  v: -1,
+  d: new Map(),
+  x: false,
 });
 
 export const recordDependencyVersion = (
@@ -41,61 +40,58 @@ export const recordDependencyVersion = (
   dependency: BaseSignal,
 ): void => {
   // Record the current version of the dependency
-  formula.dependencyVersions.set(dependency, dependency.version);
+  formula.d.set(dependency, dependency.v);
 };
 
 const isStale = <T>(formula: Formula<T>): boolean => {
   // Volatile formulas are always stale
-  if (formula.isVolatile) {
+  if (formula.x) {
     return true;
   }
 
   // Quick check: if global version hasn't changed, nothing is stale
-  if (formula.version === globalVersion) {
+  if (formula.v === globalVersion) {
     return false;
   }
 
   // If global version changed, check individual dependencies
-  for (const [dep, lastVersion] of formula.dependencyVersions) {
+  for (const [dep, lastVersion] of formula.d) {
     // Always consider stale if depending on a volatile source
-    if (dep.type === 'source' && dep.isVolatile) {
+    if (dep.t === 's' && dep.x) {
       return true;
     }
 
-    if (dep.version !== lastVersion) {
+    if (dep.v !== lastVersion) {
       return true;
     }
   }
 
   // Also stale if never computed
-  return formula.version === -1;
+  return formula.v === -1;
 };
 
 export const evaluateFormula = <T>(formula: Formula<T>): T => {
   if (!isStale(formula)) {
-    return formula.cachedValue as T;
+    return formula.c as T;
   }
 
   // Clear old dependency versions and reset volatility
-  formula.dependencyVersions.clear();
-  formula.isVolatile = false;
+  formula.d.clear();
+  formula.x = false;
 
   // Compute with dependency tracking
-  const value = withTracking(formula, formula.compute);
+  const value = withTracking(formula, formula.f);
 
   // Check if any dependencies are volatile and mark this formula as volatile
-  for (const dep of formula.dependencyVersions.keys()) {
-    if (
-      (dep.type === 'source' && dep.isVolatile) ||
-      (dep.type === 'formula' && dep.isVolatile)
-    ) {
-      formula.isVolatile = true;
+  for (const dep of formula.d.keys()) {
+    if ((dep.t === 's' && dep.x) || (dep.t === 'f' && dep.x)) {
+      formula.x = true;
       break;
     }
   }
 
-  formula.cachedValue = value;
-  formula.version = globalVersion;
+  formula.c = value;
+  formula.v = globalVersion;
 
   return value;
 };

@@ -1,40 +1,82 @@
+// NOTE: Fields must be single characters.
+// This has a surprisingly large impact on bundle size.
+
 // Core discriminated union types
 export interface Cell<T> {
-  readonly type: 'cell';
-  value: T;
-  version: number;
-  watchers: Set<Watcher<unknown>>;
+  /** Type */
+  readonly t: 'c';
+
+  /** Cell value */
+  c: T;
+
+  /** Version */
+  v: number;
+
+  /** Watchers */
+  w: Set<Watcher<unknown>>;
 }
 
 export interface Formula<T> {
-  readonly type: 'formula';
-  readonly compute: () => T;
-  cachedValue: T | undefined;
-  version: number;
-  dependencyVersions: Map<BaseSignal, number>;
-  watchers: Set<Watcher<unknown>>;
-  isVolatile: boolean;
+  /** Type */
+  readonly t: 'f';
+
+  /** Formula function */
+  readonly f: () => T;
+
+  /** Cached value */
+  c: T | undefined;
+
+  /** Version */
+  v: number;
+
+  /** Volatile flag */
+  x: boolean;
+
+  /** Versions of dependencies from last execution */
+  d: Map<BaseSignal, number>;
 }
 
 export interface Source<T> {
-  readonly type: 'source';
-  readonly read: () => T;
-  readonly subscribe?: (onChange: () => void) => Disposer;
-  cachedValue: T | undefined;
-  version: number;
-  watchers: Set<Watcher<unknown>>;
-  isVolatile: boolean;
-  hasCachedValue: boolean;
-  subscriptionDisposer?: Disposer;
+  /** Type */
+  readonly t: 's';
+
+  /** Fetch source data (read) */
+  readonly r: () => T;
+
+  /** Subscribe to changes */
+  readonly s?: (onChange: () => void) => Disposer;
+
+  /** Disposer for the subscription */
+  d?: Disposer;
+
+  /** Cached value */
+  c: T | undefined;
+
+  /** Whether the cache is primed */
+  p: boolean;
+
+  /** Volatile flag */
+  x: boolean;
+
+  /** Version */
+  v: number;
+
+  /** Watchers */
+  w: Set<Watcher<unknown>>;
 }
 
 export type Signal<T> = Cell<T> | Formula<T> | Source<T>;
 export type BaseSignal = Signal<unknown>;
 
 export interface Watcher<T> {
-  signal: Signal<T>;
-  onChange: ChangeHandler;
-  dependencies: Set<BaseSignal>;
+  /** Signal */
+  s: Signal<T>;
+
+  /** Change handler */
+  c: ChangeHandler;
+
+  /** Dependencies */
+  d: Set<BaseSignal>;
 }
 
 export type ChangeHandler = () => void;

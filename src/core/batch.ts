@@ -57,12 +57,12 @@ function swap<T>(cell: Cell<T>, newValue: T): void {
     throw new Error('Cell mutations must occur within a batch()');
   }
 
-  if (cell.value !== newValue) {
-    cell.value = newValue;
-    cell.version = nextVersion();
+  if (cell.c !== newValue) {
+    cell.c = newValue;
+    cell.v = nextVersion();
 
     // Queue notifications for after batch completes
-    for (const watcher of cell.watchers) {
+    for (const watcher of cell.w) {
       pendingNotifications.add(watcher);
     }
   }

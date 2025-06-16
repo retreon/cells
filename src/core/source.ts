@@ -7,20 +7,20 @@ import { isInWatcherContext } from '../utils/dependency-tracker';
  */
 export const evaluateSource = <T>(source: Source<T>): T => {
   // Promote immediately if this is the first run in a watcher context.
-  if (source.isVolatile && isInWatcherContext) {
+  if (source.x && isInWatcherContext) {
     promoteSourceNonVolatileSource(source);
   }
 
-  if (source.isVolatile) {
+  if (source.x) {
     // In volatile mode, always fetch fresh (without `this`).
-    return (0, source.read)();
+    return (0, source.r)();
   } else {
     // In cached mode, fetch if we haven't cached a value yet
-    if (!source.hasCachedValue) {
-      source.cachedValue = source.read();
-      source.hasCachedValue = true;
+    if (!source.p) {
+      source.c = source.r();
+      source.p = true;
     }
-    return source.cachedValue as T;
+    return source.c as T;
   }
 };
 
@@ -29,20 +29,20 @@ export const evaluateSource = <T>(source: Source<T>): T => {
  * This is shared logic used by both watcher context promotion and first watcher addition.
  */
 const promoteSourceNonVolatileSource = <T>(source: Source<T>): void => {
-  if (!source.isVolatile) return; // Already cached
+  if (!source.x) return; // Already cached
 
   // If source has a subscribe function, set up the subscription
-  if (source.subscribe) {
-    source.isVolatile = false;
-    source.subscriptionDisposer = source.subscribe(() => {
+  if (source.s) {
+    source.x = false;
+    source.d = source.s(() => {
       // When source changes, update version and notify watchers
-      source.cachedValue = undefined;
-      source.hasCachedValue = false;
-      source.version = nextVersion();
+      source.c = undefined;
+      source.p = false;
+      source.v = nextVersion();
 
       // Notify all watchers
-      for (const watcher of source.watchers) {
-        watcher.onChange();
+      for (const watcher of source.w) {
+        watcher.c();
       }
     });
   }
@@ -55,10 +55,10 @@ export const addSourceWatcher = <T>(
   source: Source<T>,
   watcher: Watcher<unknown>,
 ): void => {
-  source.watchers.add(watcher);
+  source.w.add(watcher);
 
   // For sources, transition from volatile to cached mode when first watcher is added
-  if (source.watchers.size === 1) {
+  if (source.w.size === 1) {
     promoteSourceNonVolatileSource(source);
   }
 };
@@ -70,21 +70,21 @@ export const removeSourceWatcher = <T>(
   source: Source<T>,
   watcher: Watcher<unknown>,
 ): void => {
-  source.watchers.delete(watcher);
+  source.w.delete(watcher);
 
   // For sources, transition back to volatile mode if no watchers
-  if (source.watchers.size === 0) {
-    source.isVolatile = true;
+  if (source.w.size === 0) {
+    source.x = true;
 
     // Clean up subscription
-    if (source.subscriptionDisposer) {
-      source.subscriptionDisposer();
-      source.subscriptionDisposer = undefined;
+    if (source.d) {
+      source.d();
+      source.d = undefined;
     }
 
     // Clear cached value
-    source.cachedValue = undefined;
-    source.hasCachedValue = false;
+    source.c = undefined;
+    source.p = false;
   }
 };
 
@@ -120,13 +120,13 @@ export const source = <T>(
   read: () => T,
   subscribe?: (onChange: () => void) => () => void,
 ): Source<T> => ({
-  type: 'source',
-  read,
-  subscribe,
-  cachedValue: undefined,
-  version: globalVersion,
-  watchers: new Set(),
-  isVolatile: true,
-  hasCachedValue: false,
-  subscriptionDisposer: undefined,
+  t: 's',
+  r: read,
+  s: subscribe,
+  c: undefined,
+  v: globalVersion,
+  w: new Set(),
+  x: true,
+  p: false,
+  d: undefined,
 });

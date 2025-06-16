@@ -8,9 +8,9 @@ const createWatcher = <T>(
   signal: Signal<T>,
   onChange: ChangeHandler,
 ): Watcher<T> => ({
-  signal,
-  onChange,
-  dependencies: new Set(),
+  s: signal,
+  c: onChange,
+  d: new Set(),
 });
 
 export const updateWatcherDependencies = (
@@ -18,50 +18,50 @@ export const updateWatcherDependencies = (
   emit = true,
 ): void => {
   const nextDependencies = withWatcherContext(() =>
-    visitDependencies(watcher.signal),
+    visitDependencies(watcher.s),
   );
 
   // Attach watchers to any new dependencies
   nextDependencies.forEach((dep) => {
-    if (!watcher.dependencies.has(dep)) {
-      if (dep.type === 'cell') {
+    if (!watcher.d.has(dep)) {
+      if (dep.t === 'c') {
         addCellWatcher(dep, watcher);
-      } else if (dep.type === 'source') {
+      } else if (dep.t === 's') {
         addSourceWatcher(dep, watcher);
       }
     }
   });
 
   // Remove watchers from dependencies that are no longer used
-  watcher.dependencies.forEach((dep) => {
+  watcher.d.forEach((dep) => {
     if (!nextDependencies.has(dep)) {
-      if (dep.type === 'cell') {
+      if (dep.t === 'c') {
         removeCellWatcher(dep, watcher);
-      } else if (dep.type === 'source') {
+      } else if (dep.t === 's') {
         removeSourceWatcher(dep, watcher);
       }
     }
   });
 
-  watcher.dependencies = nextDependencies;
+  watcher.d = nextDependencies;
 
   if (emit) {
     // Invoke without `this` context.
-    (0, watcher.onChange)();
+    (0, watcher.c)();
   }
 };
 
 const disposeWatcher = (watcher: Watcher<unknown>): void => {
-  watcher.dependencies.forEach((dep) => {
-    if (dep.type === 'cell') {
+  watcher.d.forEach((dep) => {
+    if (dep.t === 'c') {
       removeCellWatcher(dep, watcher);
-    } else if (dep.type === 'source') {
+    } else if (dep.t === 's') {
       removeSourceWatcher(dep, watcher);
     }
   });
 
   // Guards agianst double disposal
-  watcher.dependencies.clear();
+  watcher.d.clear();
 };
 
 /**

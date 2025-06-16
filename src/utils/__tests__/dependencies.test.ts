@@ -136,7 +136,7 @@ describe('visitDependencies', () => {
 
     const cellsOnly: any[] = [];
     visitDependencies(sum, (sig) => {
-      if (sig.type === 'cell') {
+      if (sig.t === 'c') {
         cellsOnly.push(sig);
       }
     });

@@ -38,11 +38,11 @@ export function visitDependencies<T>(
     // Call the visitor function
     visitor?.(sig);
 
-    if (sig.type === 'formula') {
+    if (sig.t === 'f') {
       // Ensure formula is evaluated to populate dependencies
       evaluateFormula(sig);
       // Recursively visit all dependencies
-      for (const [dep] of sig.dependencyVersions) {
+      for (const [dep] of sig.d) {
         visit(dep);
       }
     }

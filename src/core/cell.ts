@@ -8,7 +8,7 @@ export const addCellWatcher = <T>(
   cell: Cell<T>,
   watcher: Watcher<unknown>,
 ): void => {
-  cell.watchers.add(watcher);
+  cell.w.add(watcher);
 };
 
 /**
@@ -18,7 +18,7 @@ export const removeCellWatcher = <T>(
   cell: Cell<T>,
   watcher: Watcher<unknown>,
 ): void => {
-  cell.watchers.delete(watcher);
+  cell.w.delete(watcher);
 };
 
 /**
@@ -39,8 +39,8 @@ export const removeCellWatcher = <T>(
  * ```
  */
 export const cell = <T>(initialValue: T): Cell<T> => ({
-  type: 'cell',
-  value: initialValue,
-  version: globalVersion,
-  watchers: new Set(),
+  t: 'c',
+  c: initialValue,
+  v: globalVersion,
+  w: new Set(),
 });
