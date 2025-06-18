@@ -1,6 +1,7 @@
 import type { Source, Watcher } from './types';
 import { globalVersion, nextVersion } from '../utils/version';
 import { isInWatcherContext } from '../utils/dependency-tracker';
+import { updateWatcherDependencies } from './watcher';
 
 /**
  * Evaluates a source signal, handling both volatile and cached modes.
@@ -42,7 +43,7 @@ const promoteSourceNonVolatileSource = <T>(source: Source<T>): void => {
 
       // Notify all watchers
       for (const watcher of source.w) {
-        watcher.c();
+        updateWatcherDependencies(watcher);
       }
     });
   }
