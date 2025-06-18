@@ -62,4 +62,40 @@ describe('batch', () => {
 
     expect(get(count)).toBe(2);
   });
+
+  it('returns the value from the batch function', () => {
+    const count = cell(0);
+
+    const result = batch((swap) => {
+      swap(count, 42);
+      return 'success';
+    });
+
+    expect(result).toBe('success');
+    expect(get(count)).toBe(42);
+  });
+
+  it('returns undefined when batch function returns nothing', () => {
+    const count = cell(0);
+
+    const result = batch((swap) => {
+      swap(count, 10);
+    });
+
+    expect(result).toBeUndefined();
+    expect(get(count)).toBe(10);
+  });
+
+  it('returns complex values from batch function', () => {
+    const a = cell(1);
+    const b = cell(2);
+
+    const result = batch((swap) => {
+      swap(a, 10);
+      swap(b, 20);
+      return { sum: get(a) + get(b), product: get(a) * get(b) };
+    });
+
+    expect(result).toEqual({ sum: 30, product: 200 });
+  });
 });
