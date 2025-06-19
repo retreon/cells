@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `watch()` no longer eagerly evaluates formulas. Instead, it returns a `[dispose, renew]` tuple and delegates evaluation to the caller.
+
 ## [0.1.1] - 2025-06-18
 
 ### Fixed
