@@ -3,6 +3,7 @@ import { visitDependencies } from '../utils/dependencies';
 import { addCellWatcher, removeCellWatcher } from './cell';
 import { addSourceWatcher, removeSourceWatcher } from './source';
 import { withWatcherContext } from '../utils/dependency-tracker';
+import { get } from './get';
 
 const createWatcher = <T>(
   signal: Signal<T>,
@@ -72,14 +73,14 @@ const disposeWatcher = (watcher: Watcher<unknown>): void => {
  *
  * @param signal - The signal to watch
  * @param onChange - Function to call when the signal changes
- * @returns A disposer function that stops watching when called
+ * @returns A tuple of [dispose, renew] functions
  *
  * @example
  * ```typescript
  * const count = cell(0);
  *
- * const dispose = watch(count, () => {
- *   console.log('Count changed to:', get(count));
+ * const [dispose, renew] = watch(count, () => {
+ *   console.log('Count changed to:', renew());
  * });
  *
  * batch((swap) => {
@@ -92,9 +93,17 @@ const disposeWatcher = (watcher: Watcher<unknown>): void => {
 export const watch = <T>(
   signal: Signal<T>,
   onChange: ChangeHandler,
-): Disposer => {
+): [dispose: Disposer, renew: () => T] => {
   const watcher = createWatcher(signal, onChange);
   updateWatcherDependencies(watcher, false);
 
-  return () => disposeWatcher(watcher);
+  const dispose = () => disposeWatcher(watcher);
+
+  const renew = (): T => {
+    const value = withWatcherContext(() => get(signal));
+    updateWatcherDependencies(watcher, false);
+    return value;
+  };
+
+  return [dispose, renew];
 };

@@ -5,7 +5,7 @@ describe('watch', () => {
     const count = cell(0);
     let notified = false;
 
-    const dispose = watch(count, () => {
+    const [dispose] = watch(count, () => {
       notified = true;
     });
 
@@ -28,11 +28,11 @@ describe('watch', () => {
     let count1 = 0;
     let count2 = 0;
 
-    const dispose1 = watch(count, () => {
+    const [dispose1] = watch(count, () => {
       count1++;
     });
 
-    const dispose2 = watch(count, () => {
+    const [dispose2] = watch(count, () => {
       count2++;
     });
 
@@ -51,7 +51,7 @@ describe('watch', () => {
     const count = cell(0);
     let notifyCount = 0;
 
-    const dispose = watch(count, () => {
+    const [dispose] = watch(count, () => {
       notifyCount++;
     });
 

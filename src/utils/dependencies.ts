@@ -1,6 +1,4 @@
 import type { Signal, BaseSignal } from '../core/types';
-import { evaluateFormula } from '../core/formula';
-
 /**
  * Visits all signals in the dependency graph of a signal.
  *
@@ -39,9 +37,7 @@ export function visitDependencies<T>(
     visitor?.(sig);
 
     if (sig.t === 'f') {
-      // Ensure formula is evaluated to populate dependencies
-      evaluateFormula(sig);
-      // Recursively visit all dependencies
+      // Use current dependencies without evaluating the formula
       for (const [dep] of sig.d) {
         visit(dep);
       }
