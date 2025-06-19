@@ -1,4 +1,4 @@
-import type { Source, Watcher } from './types';
+import { STALE, type Source, type Watcher } from './types';
 import { globalVersion, nextVersion } from '../utils/version';
 import { isInWatcherContext } from '../utils/dependency-tracker';
 import { updateWatcherDependencies } from './watcher';
@@ -17,9 +17,8 @@ export const evaluateSource = <T>(source: Source<T>): T => {
     return (0, source.r)();
   } else {
     // In cached mode, fetch if we haven't cached a value yet
-    if (!source.p) {
+    if (source.c === STALE) {
       source.c = source.r();
-      source.p = true;
     }
     return source.c as T;
   }
@@ -37,8 +36,7 @@ const promoteSourceNonVolatileSource = <T>(source: Source<T>): void => {
     source.x = false;
     source.d = source.s(() => {
       // When source changes, update version and notify watchers
-      source.c = undefined;
-      source.p = false;
+      source.c = STALE;
       source.v = nextVersion();
 
       // Notify all watchers
@@ -84,8 +82,7 @@ export const removeSourceWatcher = <T>(
     }
 
     // Clear cached value
-    source.c = undefined;
-    source.p = false;
+    source.c = STALE;
   }
 };
 
@@ -124,10 +121,9 @@ export const source = <T>(
   t: 's',
   r: read,
   s: subscribe,
-  c: undefined,
+  c: STALE,
   v: globalVersion,
   w: new Set(),
   x: true,
-  p: false,
   d: undefined,
 });

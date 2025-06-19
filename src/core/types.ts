@@ -1,6 +1,9 @@
 // NOTE: Fields must be single characters.
 // This has a surprisingly large impact on bundle size.
 
+/** Sentinel value indicating cache is empty. */
+export const STALE = {};
+
 // Core discriminated union types
 export interface Cell<T> {
   /** Type */
@@ -50,10 +53,7 @@ export interface Source<T> {
   d?: Disposer;
 
   /** Cached value */
-  c: T | undefined;
-
-  /** Whether the cache is primed */
-  p: boolean;
+  c: T | typeof STALE;
 
   /** Volatile flag */
   x: boolean;
