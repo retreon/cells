@@ -17,7 +17,7 @@ describe('source', () => {
       () => () => {},
     );
 
-    const dispose = watch(counter, () => {});
+    const [dispose] = watch(counter, () => {});
 
     expect(get(counter)).toBe(1);
     expect(get(counter)).toBe(1); // Cached
@@ -32,7 +32,7 @@ describe('source', () => {
       () => () => {},
     );
 
-    const dispose = watch(counter, () => {});
+    const [dispose] = watch(counter, () => {});
     expect(get(counter)).toBe(1);
 
     dispose();
@@ -54,7 +54,7 @@ describe('source', () => {
     );
 
     let notified = false;
-    const dispose = watch(timer, () => {
+    const [dispose] = watch(timer, () => {
       notified = true;
     });
 
@@ -82,11 +82,11 @@ describe('source', () => {
 
     expect(subscribed).toBe(false);
 
-    const dispose1 = watch(timer, () => {});
+    const [dispose1] = watch(timer, () => {});
     expect(subscribed).toBe(true);
     expect(unsubscribed).toBe(false);
 
-    const dispose2 = watch(timer, () => {});
+    const [dispose2] = watch(timer, () => {});
     expect(unsubscribed).toBe(false); // Still has watchers
 
     dispose1();
@@ -106,7 +106,7 @@ describe('source', () => {
     expect(val1).not.toBe(val2);
 
     // Does not cache because it cannot be subscribed
-    const dispose = watch(random, () => {});
+    const [dispose] = watch(random, () => {});
     const val3 = get(random);
     const val4 = get(random);
     expect(val3).not.toBe(val4);
@@ -123,7 +123,7 @@ describe('source', () => {
     expect(get(undefinedSource)).toBe(undefined);
 
     // Should cache undefined when watched
-    const dispose = watch(undefinedSource, () => {});
+    const [dispose] = watch(undefinedSource, () => {});
     expect(get(undefinedSource)).toBe(undefined);
     expect(get(undefinedSource)).toBe(undefined); // Should use cached undefined
 
@@ -149,7 +149,7 @@ describe('source', () => {
     );
 
     // Watch the source - should cache first value
-    const dispose = watch(counter, () => {});
+    const [dispose] = watch(counter, () => {});
     expect(get(counter)).toBe(1);
     expect(get(counter)).toBe(1); // Should use cached value
 
@@ -179,7 +179,9 @@ describe('source', () => {
 
     // Watch must evaluate the formula to find dependencies.
     // In this first run, `value` should be promoted to non-volatile.
-    watch(compute, () => {});
+    const [, renew] = watch(compute, () => {});
+    renew(); // Evaluate the formula.
+
     expect(read).toHaveBeenCalledTimes(1);
 
     expect(get(compute)).toBe(true); // Read should pull from the cache.

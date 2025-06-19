@@ -113,6 +113,7 @@ describe('formula', () => {
     const doubled = formula(() => get(count) * 2);
     let notified = false;
 
+    get(doubled); // Initialize
     watch(doubled, () => {
       notified = true;
     });
@@ -366,7 +367,7 @@ describe('formula', () => {
       expect(get(result)).toBe(15); // Still 10 + (2 + 3)
     });
 
-    it('allows reading volatile sources without creating dependencies', () => {
+    it('allows reading sources without creating dependencies', () => {
       const a = cell(1);
       const b = cell(1);
 
@@ -376,8 +377,9 @@ describe('formula', () => {
         return trackedValue + untrackedValue;
       });
 
+      get(result); // Initialize
       const onChange = vi.fn();
-      const dispose = watch(result, onChange);
+      const [dispose, renew] = watch(result, onChange);
 
       // First access
       expect(get(result)).toBe(2); // 1 + 1
@@ -389,7 +391,7 @@ describe('formula', () => {
       });
 
       expect(onChange).toHaveBeenCalledTimes(1);
-      expect(get(result)).toBe(6); // 5 + 1
+      expect(renew()).toBe(6); // 5 + 1
 
       batch((swap) => {
         swap(b, 10);
@@ -397,7 +399,7 @@ describe('formula', () => {
 
       // Changing the untracked cell should NOT trigger recompute
       expect(onChange).toHaveBeenCalledTimes(1); // Still 6, no change
-      expect(get(result)).toBe(6); // Still 5 + 1, b is not tracked
+      expect(renew()).toBe(6); // Still 5 + 1, b is not tracked
 
       batch((swap) => {
         swap(a, 20);
@@ -405,7 +407,7 @@ describe('formula', () => {
 
       // Recomputes, incidentally reading b again
       expect(onChange).toHaveBeenCalledTimes(2);
-      expect(get(result)).toBe(30); // 20 + 10
+      expect(renew()).toBe(30); // 20 + 10
 
       dispose();
     });

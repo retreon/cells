@@ -187,8 +187,14 @@ describe('Integration Tests', () => {
       };
 
       // Watch both signals
-      const disposeData = watch(data, handlers.data);
-      const disposeComputed = watch(computed, handlers.computed);
+      const [disposeData, renewData] = watch(data, handlers.data);
+      const [disposeComputed, renewComputed] = watch(
+        computed,
+        handlers.computed,
+      );
+
+      renewData();
+      renewComputed();
 
       // Update data
       batch((swap) => {
@@ -255,7 +261,7 @@ describe('Integration Tests', () => {
       expect(readCount).toBe(2);
 
       // Add first watcher - triggers subscription
-      const dispose1 = watch(counter, () => {});
+      const [dispose1] = watch(counter, () => {});
       expect(subscribeCount).toBe(1);
       expect(unsubscribeCount).toBe(0);
 
@@ -280,7 +286,7 @@ describe('Integration Tests', () => {
       expect(readCount).toBe(4);
 
       // Add second watcher - no new subscription
-      const dispose2 = watch(counter, () => {});
+      const [dispose2] = watch(counter, () => {});
       expect(subscribeCount).toBe(1);
 
       // Remove first watcher - subscription remains

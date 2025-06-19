@@ -19,8 +19,9 @@ describe('visitDependencies', () => {
     const a = cell(1);
     const b = cell(2);
     const sum = formula(() => get(a) + get(b));
+    get(sum); // Trigger formula evaluation
 
-    const visited: any[] = [];
+    const visited: unknown[] = [];
     const visitedSet = visitDependencies(sum, (sig) => {
       visited.push(sig);
     });
@@ -37,8 +38,9 @@ describe('visitDependencies', () => {
     const b = cell(2);
     const sum = formula(() => get(a) + get(b));
     const doubled = formula(() => get(sum) * 2);
+    get(doubled); // Trigger formula evaluation
 
-    const visited: any[] = [];
+    const visited: unknown[] = [];
     visitDependencies(doubled, (sig) => {
       visited.push(sig);
     });
@@ -56,9 +58,10 @@ describe('visitDependencies', () => {
     const a = cell(1);
     const b = cell(2);
     const dynamic = formula(() => (get(condition) ? get(a) : get(b)));
+    get(dynamic); // Trigger formula evaluation
 
     // When condition is true, visits condition and a
-    let visited: any[] = [];
+    let visited: unknown[] = [];
     visitDependencies(dynamic, (sig) => {
       visited.push(sig);
     });
@@ -71,6 +74,8 @@ describe('visitDependencies', () => {
     batch((swap) => {
       swap(condition, false);
     });
+
+    get(dynamic); // Re-evaluate dynamic formula
 
     // Now visits condition and b
     visited = [];
@@ -88,8 +93,9 @@ describe('visitDependencies', () => {
     const b = formula(() => get(a) * 2);
     const c = formula(() => get(b) * 3);
     const d = formula(() => get(c) * 4);
+    get(d); // Trigger formula evaluation
 
-    const visited: any[] = [];
+    const visited: unknown[] = [];
     visitDependencies(d, (sig) => {
       visited.push(sig);
     });
@@ -106,8 +112,9 @@ describe('visitDependencies', () => {
     const b = formula(() => get(a) * 2);
     const c = formula(() => get(a) * 3);
     const sum = formula(() => get(b) + get(c));
+    get(sum); // Trigger formula evaluation
 
-    const visited: any[] = [];
+    const visited: unknown[] = [];
     const visitedSet = visitDependencies(sum, (sig) => {
       visited.push(sig);
     });
@@ -119,6 +126,7 @@ describe('visitDependencies', () => {
 
   it('returns empty visitor calls for formulas with no dependencies', () => {
     const constant = formula(() => 42);
+    get(constant); // Trigger formula evaluation
 
     const visited: any[] = [];
     visitDependencies(constant, (sig) => {
@@ -133,6 +141,7 @@ describe('visitDependencies', () => {
     const a = cell(1);
     const b = cell(2);
     const sum = formula(() => get(a) + get(b));
+    get(sum); // Trigger formula evaluation
 
     const cellsOnly: any[] = [];
     visitDependencies(sum, (sig) => {
