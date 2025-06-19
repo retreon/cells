@@ -125,19 +125,6 @@ batch((swap) => {
 });
 ```
 
-### `watch(signal, handler)`
-
-Subscribes to changes in a signal. Returns a cleanup function. For formulas, watches all transitive dependencies.
-
-```ts
-const dispose = watch(total, () => {
-  console.log('Total updated:', get(total));
-});
-
-// Later: stop watching
-dispose();
-```
-
 ### `untracked(fn)`
 
 Executes a function without tracking any signal dependencies. When called inside a formula computation, any signals read within the untracked function will not be registered as dependencies.
@@ -164,3 +151,29 @@ const visited = visitDependencies(receipt, (sig) => {
 });
 // Logs: "Found formula", "Found cell", "Found cell", "Found source"
 ```
+
+> [!WARNING]
+> This API does not evaluate formulas. If the formula hasn't been re-evaluated since dependencies changed, this API may return stale data.
+
+### `watch(signal, handler)`
+
+Subscribes to changes in a signal. Returns a cleanup and renewal function. For formulas, watches all transitive dependencies.
+
+```ts
+const [dispose, renew] = watch(total, () => {
+  console.log('Total updated:', renew());
+});
+
+// Later: stop watching
+dispose();
+```
+
+This is a low-level function that prioritizes power over simplicity. It's easy to misuse.
+
+- **dispose:** Stops watching for changes.
+- **renew:** Re-evaluates the expression and watches the new dependency set.
+
+> [!WARNING]
+> Careful attention is required when watching formulas. `watch()` does not invoke formulas automatically unless you call `renew()`. This means `watch()` may be watching stale dependencies.
+>
+> It's recommended to call `renew()` inside the watch handler (re-evaluating any formulas) to ensure you're always observing the correct dependencies.
