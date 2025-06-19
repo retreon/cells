@@ -1,15 +1,8 @@
-import type { BaseSignal, Formula } from '../core/types';
-import { recordDependencyVersion } from '../core/formula';
+import type { Formula } from '../core/types';
 
 // Module-scoped state for tracking current computation
-let currentFormula: Formula<unknown> | null = null;
+export let currentFormula: Formula<unknown> | null = null;
 export let isInWatcherContext = false;
-
-export const trackDependency = (signal: BaseSignal): void => {
-  if (currentFormula) {
-    recordDependencyVersion(currentFormula, signal);
-  }
-};
 
 export const withTracking = <T>(formula: Formula<T>, fn: () => T): T => {
   const previousFormula = currentFormula;

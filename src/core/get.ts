@@ -1,6 +1,6 @@
 import type { Signal } from './types';
-import { trackDependency } from '../utils/dependency-tracker';
-import { evaluateFormula } from './formula';
+import { currentFormula } from '../utils/dependency-tracker';
+import { evaluateFormula, recordDependencyVersion } from './formula';
 import { evaluateSource } from './source';
 
 /**
@@ -23,7 +23,9 @@ import { evaluateSource } from './source';
  */
 export const get = <T>(signal: Signal<T>): T => {
   // Track this signal as a dependency of the current formula
-  trackDependency(signal);
+  if (currentFormula) {
+    recordDependencyVersion(currentFormula, signal);
+  }
 
   if (signal.t === 'c') {
     return signal.c;
