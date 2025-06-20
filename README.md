@@ -5,73 +5,41 @@
 
 ## Purpose
 
-Retreon Cells is an implementation of Signals.
+Retreon Cells is an implementation of [Signals](https://dev.to/this-is-learning/the-evolution-of-signals-in-javascript-8ob) with first-class support for **[Volatile Functions](https://learn.microsoft.com/en-us/office/dev/add-ins/excel/custom-functions-volatile)**, a primitive for binding external data sources.
 
-The driving force is support for **[Volatile Functions](https://learn.microsoft.com/en-us/office/dev/add-ins/excel/custom-functions-volatile)**, a concept borrowed from spreadsheet programming. Volatile functions are inherently impure - they return different values even with the same inputs. The web platform is full of these: `Date.now()`, `localStorage` reads, `window.innerHeight`, and countless others.
+This is a low-level library. It biases towards power and expressiveness over safety and convenience. As such, several components are out of scope:
 
-Traditional systems struggle with volatile sources. They introduce stale reads, resource leaks, or unusable APIs outside a component context. Retreon Cells addresses this by integrating external sources directly into the computation graph, propagating cache invalidation in pull-based reactivity and upgrading to tracked values in watched contexts.
+- Error caching
+- Cycle detection
+- Effect management
 
-For more information, see [the TC39 Signals proposal discussion](https://github.com/tc39/proposal-signals/issues/237).
+## Other Projects
 
-## Design Goals
+There are many high-quality libraries implementing signal-based reactivity:
 
-This is intended as a low-level library. It's designed to be powerful, expressive, lightweight, and performant.
+- [SolidJS Signals](https://github.com/solidjs/signals)
+- [Preact Signals](https://github.com/preactjs/signals)
+- [Alien Signals](https://github.com/stackblitz/alien-signals) (used by Vue, XState, many others)
+- [TC39 Proposal Reference Implementation](https://github.com/proposal-signals/signal-polyfill)
 
-Guardrails and convenience functions are out of scope and better suited to higher-level abstractions.
+`@retreon/cells` exists to explore the space of Volatile Functions and serve as a concrete example of how it might work in practice. It spawned out of a discussion thread [here](https://github.com/tc39/proposal-signals/issues/237).
+
+## Overview
+
+- **Cell:** Holds a value. Can only be read or replaced.
+- **Source:** Similar to a cell, but binds to externally owned data.
+- **Formula:** Computes a cached value using cells, sources, or other formulas.
+- **Watcher:** Listens for changes on a cell, source, or formula.
 
 ## Installation
 
 ```bash
-npm install @retreon/cells
-```
-
-## Quick Example
-
-```ts
-import { cell, formula, source, get, batch, watch } from '@retreon/cells';
-
-// Mutable state
-const quantity = cell(2);
-const price = cell(19.99);
-
-// Computed values
-const total = formula(() => get(quantity) * get(price));
-
-// Volatile source
-const timestamp = source(
-  () => Date.now(),
-  (onChange) => {
-    // Timestamp sampled every second.
-    const interval = setInterval(onChange, 1_000);
-    return () => clearInterval(interval);
-  },
-);
-
-// Composed formula using both stable and volatile data
-const receipt = formula(() => ({
-  total: get(total),
-  time: get(timestamp),
-}));
-
-// Read values
-console.log(get(receipt));
-// { total: 39.98, time: 1577836800000 }
-
-// Update state atomically
-batch((swap) => {
-  swap(quantity, 3);
-  swap(price, 24.99);
-});
-
-// Watch for changes
-const dispose = watch(total, () => {
-  console.log(`Total changed to: ${get(total)}`);
-});
+npm install --save @retreon/cells
 ```
 
 ## API
 
-### `cell(initialValue)`
+### `cell`
 
 Creates a mutable value container. Like a spreadsheet cell, it holds a value that can be updated.
 
@@ -79,25 +47,16 @@ Creates a mutable value container. Like a spreadsheet cell, it holds a value tha
 const count = cell(0);
 ```
 
-### `formula(compute)`
+### `source`
 
-Creates a computed value that automatically updates when its dependencies change. Dependencies are discovered automatically during execution.
-
-```ts
-const doubled = formula(() => get(count) * 2);
-```
-
-### `source(fetch, subscribe?)`
-
-Bridges external data into the reactive system. Without a subscription function, sources remain volatile - recomputing on every read. With a subscription, they become cached while observed.
+Binds to an untracked data source. Examples are `window.innerHeight`, `document.visibilityState`, `localStorage.getItem()`, or any value that changes over time.
 
 ```ts
-// Volatile: always fresh
-const random = source(() => Math.random());
-
-// Cached when watched: efficient for event-driven data
-const windowSize = source(
-  () => ({ width: window.innerWidth, height: window.innerHeight }),
+const viewport = source(
+  () => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }),
   (onChange) => {
     window.addEventListener('resize', onChange);
     return () => window.removeEventListener('resize', onChange);
@@ -105,75 +64,91 @@ const windowSize = source(
 );
 ```
 
-### `get(signal)`
+Sources run in two modes:
 
-Reads the current value of any signal. When used inside a formula, automatically tracks the signal as a dependency.
+- **Volatile (unwatched):** Every read is fresh, not cached.
+- **Non-Volatile (watched):** Reads are cached and only recomputed when necessary.
+
+Sources start volatile until they become watched. If a `subscribe()` handler is provided, the source upgrades to non-volatile and only triggers changes when it calls `onChange`.
+
+### `formula`
+
+Formulas compute a value using cells and sources. The result is cached until a dependency changes.
 
 ```ts
-const value = get(doubled); // 2
+const doubled = formula(() => get(count) * 2);
 ```
 
-### `batch(fn)`
+Formulas that depend on volatile sources are never cached and will always re-evaluate.
 
-Executes multiple cell updates atomically. Ensures consistency by preventing intermediate states from being observed.
+### `get`
+
+Reads the current value of a source, cell, or formula.
+
+```ts
+const value = cell(10);
+get(value); // => 10
+```
+
+When used inside a formula, the value is automatically tracked as a dependency.
+
+### `untracked`
+
+Allows reading cells, sources, and formulas without adding them as dependencies.
+
+```ts
+const a = cell('a');
+const b = cell('b');
+
+// Only `a` is added to the set of dependencies. `b` is ignored.
+const result = formula(() => {
+  const trackedValue = get(a);
+  const untrackedValue = untracked(() => get(b));
+});
+```
+
+### `batch`
+
+Updates the value of one or more cells atomically.
 
 ```ts
 batch((swap) => {
   swap(cellA, 1);
   swap(cellB, 2);
-  // Watchers fire after both updates complete
 });
 ```
 
-### `untracked(fn)`
+Watchers are only notified after all changes are applied (glitch-free evaluation).
 
-Executes a function without tracking any signal dependencies. When called inside a formula computation, any signals read within the untracked function will not be registered as dependencies.
+### `watch`
 
-```ts
-const a = cell(1);
-const b = cell(2);
-
-// result only recomputes when 'a' changes, not when 'b' changes
-const result = formula(() => {
-  const trackedValue = get(a); // This creates a dependency
-  const untrackedValue = untracked(() => get(b)); // This does not
-  return trackedValue + untrackedValue;
-});
-```
-
-### `visitDependencies(signal, visitor)`
-
-Visits all signals in the dependency graph. Calls the visitor function for each signal encountered and returns the set of all visited signals.
-
-```ts
-const visited = visitDependencies(receipt, (sig) => {
-  console.log(`Found ${sig.type}`);
-});
-// Logs: "Found formula", "Found cell", "Found cell", "Found source"
-```
-
-> [!WARNING]
-> This API does not evaluate formulas. If the formula hasn't been re-evaluated since dependencies changed, this API may return stale data.
-
-### `watch(signal, handler)`
-
-Subscribes to changes in a signal. Returns a cleanup and renewal function. For formulas, watches all transitive dependencies.
+Subscribes to a cell, source, or formula.
 
 ```ts
 const [dispose, renew] = watch(total, () => {
   console.log('Total updated:', renew());
 });
-
-// Later: stop watching
-dispose();
 ```
 
-This is a low-level function that prioritizes power over simplicity. It's easy to misuse.
+If the target is a formula, all its recursive dependencies are observed. Any `source()` values used are immediately promoted to non-volatile.
 
-- **dispose:** Stops watching for changes.
-- **renew:** Re-evaluates the expression and watches the new dependency set.
+Calling `renew()` re-evaluates the value and updates the set of observed dependencies. Calling `dispose()` clears the watcher and releases all values. If this was the only watcher observing a `source()`, it will downgrade to volatile mode.
 
 > [!WARNING]
-> Careful attention is required when watching formulas. `watch()` does not invoke formulas automatically unless you call `renew()`. This means `watch()` may be watching stale dependencies.
+> Calling `watch()` does **not** evaluate formulas. If the formula hasn't been evaluated yet, or hasn't been evaluated since dependencies changed, `watch()` will subscribe to stale dependencies.
 >
-> It's recommended to call `renew()` inside the watch handler (re-evaluating any formulas) to ensure you're always observing the correct dependencies.
+> While it provides control over how and when formulas execute, the API is easy to misuse. It's recommended to abstract it with higher-level utilities.
+
+### `visitDependencies`
+
+Visits all cells, sources, and formulas in a dependency graph.
+
+```ts
+const visited = visitDependencies(expression, (dep) => {
+  console.log('Found:', dep.type);
+});
+```
+
+It returns the set of all dependencies including the value provided.
+
+**Note:** like `watch()`, `visitDependencies()` does not evaluate formulas and may return a stale (cached) set of dependencies. You may want to force evaluation before calling this API.
