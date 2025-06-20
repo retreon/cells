@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-06-20
+
 ### Changed
 
 - `watch()` no longer eagerly evaluates formulas. Instead, it returns a `[dispose, renew]` tuple and delegates evaluation to the caller.
@@ -25,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Automatic dependency tracking and change propagation
 - Watchers for observing changes
 
-[Unreleased]: https://github.com/retreon/cells/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/retreon/cells/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/retreon/cells/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/retreon/cells/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/retreon/cells/releases/tag/v0.1.0
